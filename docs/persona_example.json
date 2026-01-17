@@ -1,0 +1,33 @@
+{
+    "identity": {
+      "name": "Alex Chen",
+      "headline": "Founder @ Stealth Startup | Ex-Stripe",
+      "location": "San Francisco, CA"
+    },
+    "networking_goals": [
+      "Find a technical co-founder who has deep experience with Rust and distributed systems",
+      "Get critical feedback on my B2B sales motion for a developer tool",
+      "Connect with angel investors who understand the devtool space"
+    ],
+    "raw_assets": {
+      "voice_snippet": "just a builder trying to ship things without getting bogged down in meetings. honestly i think most startups fail because they overcomplicate the tech stack early on. i love rust and coffee, simple as that. once crashed the prod database by running a migration on friday and learned my lesson the hard way. i hate bureaucracy and just want to write code that actually solves problems. usually online late night if you want to jam on ideas. big believer in shipping fast and breaking things if necessary.",
+      "experience_log": [
+        "Senior Backend Engineer @ Stripe (2020-2023) - Core Payments Team. Led the migration of the legacy payment intents API to a new sharded architecture, reducing latency by 40% during peak Black Friday traffic. Mentored 3 junior engineers and conducted over 50 technical interviews.",
+        "Freelance Consultant (2019-2020) - Built MVPs for early stage YC startups including a fintech dashboard that handled $1M in transaction volume within the first month. Specialized in rapid prototyping using React and Node.js.",
+        "Software Engineering Intern @ Shopify (2018) - Worked on the inventory management team, implementing a new caching layer using Redis for high-volume flash sales events."
+      ],
+      "project_list": [
+        "Repo: rocket-rs (Rust) - A high performance, type-safe web server template designed for speed. Currently has 1.2k stars on GitHub and is used by several production startups. Focuses on zero-cost abstractions.",
+        "Repo: dotfiles (Lua) - Highly customized Neovim configuration focused on Rust development workflows, featuring custom LSP integrations, telescope pickers, and sub-50ms startup times.",
+        "Project: Monitor-CLI - An open-source command line tool for monitoring server health in real-time, written in Go. Featured on Hacker News front page in 2022 for its minimal memory footprint."
+      ],
+      "interests": [
+        "Rust Programming",
+        "High-Performance Computing",
+        "Mechanical Keyboards",
+        "Biohacking",
+        "Indie Hacking",
+        "Espresso Brewing"
+      ]
+    }
+  }
