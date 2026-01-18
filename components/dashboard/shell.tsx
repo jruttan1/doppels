@@ -96,7 +96,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const displayEmail = userData.email || ""
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-screen bg-background overflow-hidden">
       {/* Mobile header */}
       <header className="lg:hidden fixed top-0 left-0 right-0 z-50 glass border-b border-border">
         <div className="flex items-center justify-between px-4 h-14">
@@ -193,8 +193,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       )}
 
       {/* Main content */}
-      <main className="lg:pl-64 pt-14 lg:pt-0">
-        <div className="hidden lg:flex items-center justify-between px-8 h-16 border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-20">
+      <main className="lg:pl-64 pt-14 lg:pt-0 h-full flex flex-col overflow-hidden">
+        <div className="hidden lg:flex items-center justify-between px-6 h-12 border-b border-border bg-card/50 backdrop-blur-sm flex-shrink-0 z-20">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input placeholder="Search connections, simulations..." className="pl-9 w-80 bg-secondary/50 border-0" />
@@ -243,7 +243,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             </DropdownMenu>
           </div>
         </div>
-        <div className="p-4 sm:p-6 lg:p-8">{children}</div>
+        <div className="flex-1 min-h-0 overflow-hidden p-4 sm:p-6 lg:p-8">{children}</div>
       </main>
     </div>
   )

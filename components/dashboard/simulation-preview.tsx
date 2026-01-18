@@ -6,34 +6,77 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { MessageSquare, ArrowRight, Sparkles, Bot } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 
 interface SimulationMessage {
   agent: "A" | "B"
   message: string
 }
 
-const MOCK_SIMULATION: SimulationMessage[] = [
-  {
-    agent: "A",
-    message: "Hey! I noticed you've scaled engineering teams before. I'm building something similar at my startup...",
-  },
-  {
-    agent: "B",
-    message: "Interesting! What's your current tech stack? I've had success with event-driven architectures at scale.",
-  },
-  {
-    agent: "A",
-    message: "We're using Next.js + Go microservices. The challenge is real-time sync across 50+ services.",
-  },
-  { agent: "B", message: "That resonates. Have you considered CQRS? Happy to share what worked for us." },
-]
-
 export function SimulationPreview() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isTyping, setIsTyping] = useState(false)
+  const [messages, setMessages] = useState<SimulationMessage[]>([])
+  const [targetName, setTargetName] = useState("")
+  const [targetRole, setTargetRole] = useState("")
+  const supabase = createClient()
 
   useEffect(() => {
-    if (currentIndex < MOCK_SIMULATION.length - 1) {
+    const fetchLatestSimulation = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        // Fetch the most recent simulation
+        const { data: simulation, error } = await supabase
+          .from('simulations')
+          .select('participant2, transcript, score')
+          .eq('participant1', user.id)
+          .not('transcript', 'is', null)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single()
+
+        if (error || !simulation) {
+          return
+        }
+
+        // Fetch target user details
+        const { data: targetUser } = await supabase
+          .from('users')
+          .select('name, tagline, persona')
+          .eq('id', simulation.participant2)
+          .single()
+
+        if (targetUser) {
+          const persona = targetUser.persona as any
+          const identity = persona?.identity || {}
+          const tagline = targetUser.tagline || ""
+          const role = identity?.role || tagline.split("@")[0]?.trim() || "Professional"
+          const company = identity?.company || tagline.split("@")[1]?.split("|")[0]?.trim() || ""
+          setTargetRole(company ? `${role} @ ${company}` : role)
+          setTargetName(targetUser.name || "Unknown")
+        }
+
+        // Convert transcript to messages
+        const transcript = simulation.transcript as any[]
+        if (transcript && Array.isArray(transcript)) {
+          const simMessages: SimulationMessage[] = transcript.map((msg: any, idx: number) => ({
+            agent: (idx % 2 === 0 ? "A" : "B") as "A" | "B",
+            message: msg.text || msg.content || "",
+          }))
+          setMessages(simMessages)
+        }
+      } catch (error) {
+        console.error("Error fetching simulation:", error)
+      }
+    }
+
+    fetchLatestSimulation()
+  }, [supabase])
+
+  useEffect(() => {
+    if (messages.length > 0 && currentIndex < messages.length - 1) {
       const timer = setTimeout(() => {
         setIsTyping(true)
         setTimeout(() => {
@@ -43,7 +86,7 @@ export function SimulationPreview() {
       }, 3000)
       return () => clearTimeout(timer)
     }
-  }, [currentIndex])
+  }, [currentIndex, messages.length])
 
   return (
     <Card className="glass border-border h-full">
@@ -68,13 +111,16 @@ export function SimulationPreview() {
               <AvatarImage src="/woman-tech-executive.jpg" />
               <AvatarFallback>SC</AvatarFallback>
             </Avatar>
-            <span className="text-sm font-medium">Sarah Chen</span>
+            <span className="text-sm font-medium">{targetName || "Unknown"}</span>
           </div>
         </div>
       </CardHeader>
       <CardContent className="pt-0">
         <div className="space-y-3 max-h-[250px] overflow-y-auto">
-          {MOCK_SIMULATION.slice(0, currentIndex + 1).map((msg, i) => (
+          {messages.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No simulation data available</p>
+          ) : (
+            messages.slice(0, currentIndex + 1).map((msg, i) => (
             <div key={i} className={`flex gap-2 ${msg.agent === "A" ? "" : "justify-end"}`}>
               <div
                 className={`max-w-[85%] p-3 rounded-xl text-sm ${
@@ -84,7 +130,8 @@ export function SimulationPreview() {
                 <p className="text-muted-foreground leading-relaxed">{msg.message}</p>
               </div>
             </div>
-          ))}
+            ))
+          )}
           {isTyping && (
             <div className="flex gap-2 justify-end">
               <div className="bg-secondary p-3 rounded-xl">

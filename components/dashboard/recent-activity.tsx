@@ -1,8 +1,10 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Activity, CheckCircle2, XCircle, MessageSquare, UserPlus, Zap } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 
 interface ActivityItem {
   id: string
@@ -11,44 +13,6 @@ interface ActivityItem {
   description: string
   time: string
 }
-
-const MOCK_ACTIVITY: ActivityItem[] = [
-  {
-    id: "1",
-    type: "match_found",
-    title: "New High Match",
-    description: "94% compatibility with Sarah Chen (CTO)",
-    time: "2 min ago",
-  },
-  {
-    id: "2",
-    type: "simulation_complete",
-    title: "Simulation Complete",
-    description: "Conversation with David Kim finished",
-    time: "15 min ago",
-  },
-  {
-    id: "3",
-    type: "connection_made",
-    title: "Coffee Chat Booked",
-    description: "Meeting with Julia Park on Friday",
-    time: "1 hour ago",
-  },
-  {
-    id: "4",
-    type: "simulation_failed",
-    title: "Low Compatibility",
-    description: "45% match with Tom Brown - filtered out",
-    time: "2 hours ago",
-  },
-  {
-    id: "5",
-    type: "agent_update",
-    title: "Agent Optimized",
-    description: "Your Doppel learned from 12 new interactions",
-    time: "3 hours ago",
-  },
-]
 
 const getActivityIcon = (type: ActivityItem["type"]) => {
   switch (type) {
@@ -89,6 +53,105 @@ const getActivityBadge = (type: ActivityItem["type"]) => {
 }
 
 export function RecentActivity() {
+  const [activities, setActivities] = useState<ActivityItem[]>([])
+  const supabase = createClient()
+
+  useEffect(() => {
+    const fetchActivity = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        // Fetch recent simulations
+        const { data: simulations, error } = await supabase
+          .from('simulations')
+          .select('id, participant2, score, created_at')
+          .eq('participant1', user.id)
+          .order('created_at', { ascending: false })
+          .limit(10)
+
+        if (error || !simulations) {
+          console.error("Error fetching activity:", error)
+          return
+        }
+
+        if (simulations.length === 0) {
+          setActivities([])
+          return
+        }
+
+        // Fetch user names
+        const userIds = simulations.map(s => s.participant2)
+        const { data: users } = await supabase
+          .from('users')
+          .select('id, name, tagline, persona')
+          .in('id', userIds)
+
+        const userMap = new Map(users?.map(u => [u.id, u]) || [])
+
+        // Map simulations to activity items
+        const activityItems: ActivityItem[] = simulations.map((sim) => {
+          const user = userMap.get(sim.participant2)
+          const persona = user?.persona as any
+          const identity = persona?.identity || {}
+          const tagline = user?.tagline || ""
+          const role = identity?.role || tagline.split("@")[0]?.trim() || "Professional"
+          const company = identity?.company || tagline.split("@")[1]?.split("|")[0]?.trim() || ""
+          const roleText = company ? `${role} @ ${company}` : role
+
+          const createdAt = new Date(sim.created_at)
+          const now = new Date()
+          const diffMs = now.getTime() - createdAt.getTime()
+          const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+          const diffDays = Math.floor(diffHours / 24)
+          let time = "Just now"
+          if (diffDays > 0) {
+            time = `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
+          } else if (diffHours > 0) {
+            time = `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
+          } else {
+            const diffMins = Math.floor(diffMs / (1000 * 60))
+            if (diffMins > 0) {
+              time = `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`
+            }
+          }
+
+          if (sim.score && sim.score >= 70) {
+            return {
+              id: sim.id,
+              type: "match_found",
+              title: "New High Match",
+              description: `${sim.score}% compatibility with ${user?.name || "Unknown"} (${roleText})`,
+              time,
+            }
+          } else if (sim.score !== null && sim.score !== undefined) {
+            return {
+              id: sim.id,
+              type: "simulation_failed",
+              title: "Low Compatibility",
+              description: `${sim.score}% match with ${user?.name || "Unknown"} - filtered out`,
+              time,
+            }
+          } else {
+            return {
+              id: sim.id,
+              type: "simulation_complete",
+              title: "Simulation Complete",
+              description: `Conversation with ${user?.name || "Unknown"} finished`,
+              time,
+            }
+          }
+        })
+
+        setActivities(activityItems)
+      } catch (error) {
+        console.error("Error in fetchActivity:", error)
+      }
+    }
+
+    fetchActivity()
+  }, [supabase])
+
   return (
     <Card className="glass border-border h-full">
       <CardHeader className="pb-3">
@@ -99,7 +162,10 @@ export function RecentActivity() {
       </CardHeader>
       <CardContent className="pt-0">
         <div className="space-y-1">
-          {MOCK_ACTIVITY.map((item, index) => (
+          {activities.length === 0 ? (
+            <p className="text-sm text-muted-foreground p-3">No recent activity</p>
+          ) : (
+            activities.map((item, index) => (
             <div
               key={item.id}
               className="flex items-start gap-3 p-3 rounded-lg hover:bg-secondary/30 transition-colors cursor-pointer group"
@@ -116,7 +182,8 @@ export function RecentActivity() {
                 <p className="text-xs text-muted-foreground/60 mt-1">{item.time}</p>
               </div>
             </div>
-          ))}
+            ))
+          )}
         </div>
       </CardContent>
     </Card>

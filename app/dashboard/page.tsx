@@ -2,7 +2,6 @@ import { DashboardShell } from "@/components/dashboard/shell"
 import { NetworkGraph } from "@/components/dashboard/network-graph"
 import { ConnectionsList } from "@/components/dashboard/connections-list"
 import { AgentStatus } from "@/components/dashboard/agent-status"
-import { SimulationsView } from "@/components/dashboard/simulations-view"
 
 export const metadata = {
   title: "Dashboard | Doppel",
@@ -13,30 +12,22 @@ export default async function DashboardPage() {
 
   return (
     <DashboardShell>
-      <div className="space-y-6">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground via-foreground to-primary bg-clip-text">
-            Dashboard
-          </h1>
-          <p className="text-muted-foreground">Your Doppel is exploring. Here&apos;s what it&apos;s found so far.</p>
+      <div className="h-full flex flex-col overflow-hidden">
+        <div className="flex-shrink-0 space-y-4 mb-4">
+          <div className="flex flex-col gap-2">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground via-foreground to-primary bg-clip-text">
+              Dashboard
+            </h1>
+            <p className="text-muted-foreground">Your Doppel is exploring. Here&apos;s what it&apos;s found so far.</p>
+          </div>
+          <AgentStatus />
         </div>
 
-        <AgentStatus />
-
-        <div className="space-y-6">
-          <div>
-            <h2 className="text-2xl font-bold mb-4">Network Map</h2>
-            <NetworkGraph />
-          </div>
-
-          {/* Mobile: Stack connections and simulations */}
-          <div className="lg:hidden space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold mb-4">Connections & Simulations</h2>
-              <div className="space-y-6">
-                <ConnectionsList />
-                <SimulationsView />
-              </div>
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <div className="h-full flex flex-col">
+            <h2 className="text-2xl font-bold mb-4 flex-shrink-0">Network Map</h2>
+            <div className="flex-1 min-h-0">
+              <NetworkGraph />
             </div>
           </div>
         </div>

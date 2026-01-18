@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ChevronRight, Sparkles } from "lucide-react"
 import { ConnectionDetailModal } from "./connection-detail-modal"
+import { createClient } from "@/lib/supabase/client"
 
 interface ConnectionPreview {
   id: string
@@ -19,64 +20,111 @@ interface ConnectionPreview {
   matchedAt: string
 }
 
-const MOCK_CONNECTIONS: ConnectionPreview[] = [
-  {
-    id: "1",
-    name: "Sarah Chen",
-    role: "CTO @ Fintech Startup",
-    avatar: "/woman-tech-executive.jpg",
-    compatibility: 94,
-    icebreaker: "You both built distributed systems at scale and share a passion for functional programming.",
-    status: "matched",
-    matchedAt: "2 hours ago",
-  },
-  {
-    id: "2",
-    name: "Chris Patel",
-    role: "Angel Investor",
-    avatar: "/man-investor-professional.jpg",
-    compatibility: 89,
-    icebreaker: "Chris has invested in 3 companies in your space and is actively looking for technical founders.",
-    status: "matched",
-    matchedAt: "5 hours ago",
-  },
-  {
-    id: "3",
-    name: "Julia Park",
-    role: "PM @ AI Company",
-    avatar: "/woman-product-manager.png",
-    compatibility: 91,
-    icebreaker: "You connected last week",
-    status: "connected",
-    matchedAt: "1 week ago",
-  },
-  {
-    id: "4",
-    name: "Marcus Reed",
-    role: "Eng Lead @ Series B",
-    avatar: "/man-engineering-lead.jpg",
-    compatibility: 87,
-    icebreaker: "Marcus is building a team and loves your open source contributions to the React ecosystem.",
-    status: "matched",
-    matchedAt: "1 day ago",
-  },
-  {
-    id: "5",
-    name: "Lisa Wang",
-    role: "Co-founder @ Web3",
-    avatar: "/woman-startup-founder.jpg",
-    compatibility: 85,
-    icebreaker: "Both bootstrapped companies and share views on sustainable growth.",
-    status: "matched",
-    matchedAt: "3 days ago",
-  },
-]
-
 export function ConnectionsList() {
   const [selectedConnection, setSelectedConnection] = useState<ConnectionPreview | null>(null)
+  const [connections, setConnections] = useState<ConnectionPreview[]>([])
+  const supabase = createClient()
 
-  const matchedConnections = MOCK_CONNECTIONS.filter((c) => c.status === "matched")
-  const connectedConnections = MOCK_CONNECTIONS.filter((c) => c.status === "connected")
+  useEffect(() => {
+    const fetchConnections = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        // Fetch simulations with score >= 70 (matches)
+        const { data: simulations, error } = await supabase
+          .from('simulations')
+          .select(`
+            participant2,
+            score,
+            created_at,
+            transcript
+          `)
+          .eq('participant1', user.id)
+          .gte('score', 70)
+          .order('created_at', { ascending: false })
+
+        if (error) {
+          console.error("Error fetching connections:", error)
+          return
+        }
+
+        if (!simulations || simulations.length === 0) {
+          setConnections([])
+          return
+        }
+
+        // Fetch user details for matched users
+        const userIds = simulations.map(s => s.participant2)
+        const { data: users, error: usersError } = await supabase
+          .from('users')
+          .select('id, name, tagline, persona')
+          .in('id', userIds)
+
+        if (usersError || !users) {
+          console.error("Error fetching user details:", usersError)
+          return
+        }
+
+        // Map to ConnectionPreview
+        const connectionsList: ConnectionPreview[] = simulations.map((sim) => {
+          const user = users.find(u => u.id === sim.participant2)
+          const persona = user?.persona as any
+          const identity = persona?.identity || {}
+          const tagline = user?.tagline || ""
+          const role = identity?.role || tagline.split("@")[0]?.trim() || "Professional"
+          const company = identity?.company || tagline.split("@")[1]?.split("|")[0]?.trim() || ""
+          const roleText = company ? `${role} @ ${company}` : role
+
+          // Generate icebreaker from transcript or default
+          const transcript = sim.transcript as any[]
+          let icebreaker = "High compatibility match"
+          if (transcript && Array.isArray(transcript) && transcript.length > 0) {
+            const firstMsg = transcript[0]?.text || transcript[0]?.content || ""
+            icebreaker = firstMsg.substring(0, 100) + (firstMsg.length > 100 ? "..." : "")
+          }
+
+          // Format time
+          const createdAt = new Date(sim.created_at)
+          const now = new Date()
+          const diffMs = now.getTime() - createdAt.getTime()
+          const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+          const diffDays = Math.floor(diffHours / 24)
+          let matchedAt = "Just now"
+          if (diffDays > 0) {
+            matchedAt = `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
+          } else if (diffHours > 0) {
+            matchedAt = `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
+          } else {
+            const diffMins = Math.floor(diffMs / (1000 * 60))
+            if (diffMins > 0) {
+              matchedAt = `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`
+            }
+          }
+
+          return {
+            id: user?.id || sim.participant2,
+            name: user?.name || "Unknown",
+            role: roleText,
+            avatar: "",
+            compatibility: sim.score || 0,
+            icebreaker,
+            status: "matched" as const,
+            matchedAt,
+          }
+        })
+
+        setConnections(connectionsList)
+      } catch (error) {
+        console.error("Error in fetchConnections:", error)
+      }
+    }
+
+    fetchConnections()
+  }, [supabase])
+
+  const matchedConnections = connections.filter((c) => c.status === "matched")
+  const connectedConnections = connections.filter((c) => c.status === "connected")
 
   return (
     <>

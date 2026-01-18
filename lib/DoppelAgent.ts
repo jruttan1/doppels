@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
 export interface AgentPersona {
   id: string;
@@ -77,23 +77,45 @@ INSTRUCTIONS:
         ? `The other person just said: "${lastMessage}"\n\nRespond naturally as ${this.name}.`
         : `Start a conversation as ${this.name}. Introduce yourself briefly and mention what you're looking for.`;
 
-      // Generate reply
-      const result = await model.generateContent({
-        contents: [
-          { role: "user", parts: [{ text: systemPrompt }] },
-          ...this.conversationHistory.map(msg => ({
-            role: msg.role === 'user' ? 'user' : 'model',
-            parts: [{ text: msg.parts }]
-          })),
-          { role: "user", parts: [{ text: prompt }] }
-        ],
-        generationConfig: {
-          temperature: 0.8,
-          maxOutputTokens: 200
+      // Generate reply with retry logic for rate limits
+      let result;
+      let retries = 0;
+      const maxRetries = 3;
+      
+      while (retries < maxRetries) {
+        try {
+          result = await model.generateContent({
+            contents: [
+              { role: "user", parts: [{ text: systemPrompt }] },
+              ...this.conversationHistory.map(msg => ({
+                role: msg.role === 'user' ? 'user' : 'model',
+                parts: [{ text: msg.parts }]
+              })),
+              { role: "user", parts: [{ text: prompt }] }
+            ],
+            generationConfig: {
+              temperature: 0.8,
+              maxOutputTokens: 200
+            }
+          });
+          break; // Success, exit retry loop
+        } catch (error: any) {
+          if (error.message?.includes('429') || error.message?.includes('quota') || error.message?.includes('rate limit')) {
+            retries++;
+            if (retries >= maxRetries) {
+              throw error;
+            }
+            // Exponential backoff: wait 2^retries seconds (2s, 4s, 8s)
+            const waitTime = Math.pow(2, retries) * 1000;
+            console.log(`Rate limit hit, retrying in ${waitTime/1000}s... (attempt ${retries}/${maxRetries})`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+          } else {
+            throw error; // Not a rate limit error, throw immediately
+          }
         }
-      });
+      }
 
-      const reply = result.response.text().trim();
+      const reply = result!.response.text().trim();
       
       // Add reply to history
       this.conversationHistory.push({ role: 'model', parts: reply });

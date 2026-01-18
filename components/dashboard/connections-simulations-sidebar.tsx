@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -10,6 +10,7 @@ import { ChevronRight, Sparkles, MessageSquare, CheckCircle2, XCircle, Clock, Bo
 import { ConnectionDetailModal } from "./connection-detail-modal"
 import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { createClient } from "@/lib/supabase/client"
 
 interface ConnectionPreview {
   id: string
@@ -36,177 +37,163 @@ interface Simulation {
   summary?: string
 }
 
-const MOCK_CONNECTIONS: ConnectionPreview[] = [
-  {
-    id: "1",
-    name: "Sarah Chen",
-    role: "CTO @ Fintech Startup",
-    avatar: "/woman-tech-executive.jpg",
-    compatibility: 94,
-    icebreaker: "You both built distributed systems at scale and share a passion for functional programming.",
-    status: "matched",
-    matchedAt: "2 hours ago",
-  },
-  {
-    id: "2",
-    name: "Chris Patel",
-    role: "Angel Investor",
-    avatar: "/man-investor-professional.jpg",
-    compatibility: 89,
-    icebreaker: "Chris has invested in 3 companies in your space and is actively looking for technical founders.",
-    status: "matched",
-    matchedAt: "5 hours ago",
-  },
-  {
-    id: "3",
-    name: "Julia Park",
-    role: "PM @ AI Company",
-    avatar: "/woman-product-manager.png",
-    compatibility: 91,
-    icebreaker: "You connected last week",
-    status: "connected",
-    matchedAt: "1 week ago",
-  },
-  {
-    id: "4",
-    name: "Marcus Reed",
-    role: "Eng Lead @ Series B",
-    avatar: "/man-engineering-lead.jpg",
-    compatibility: 87,
-    icebreaker: "Marcus is building a team and loves your open source contributions to the React ecosystem.",
-    status: "matched",
-    matchedAt: "1 day ago",
-  },
-  {
-    id: "5",
-    name: "Lisa Wang",
-    role: "Co-founder @ Web3",
-    avatar: "/woman-startup-founder.jpg",
-    compatibility: 85,
-    icebreaker: "Both bootstrapped companies and share views on sustainable growth.",
-    status: "matched",
-    matchedAt: "3 days ago",
-  },
-]
-
-const MOCK_SIMULATIONS: Simulation[] = [
-  {
-    id: "1",
-    targetName: "Sarah Chen",
-    targetRole: "CTO @ Fintech Startup",
-    targetAvatar: "/woman-tech-executive.jpg",
-    status: "completed",
-    score: 94,
-    turns: 6,
-    startedAt: "2 hours ago",
-    completedAt: "2 hours ago",
-    messages: [
-      {
-        agent: "A",
-        message:
-          "Hey Sarah! I noticed you've built distributed systems at scale. I'm working on something similar at my startup and would love to exchange notes.",
-      },
-      {
-        agent: "B",
-        message:
-          "Hi! Always happy to chat about distributed systems. What kind of scale are you dealing with? I've seen some interesting patterns at Fintech companies.",
-      },
-      {
-        agent: "A",
-        message:
-          "We're processing about 10M events/day across 50+ microservices. The challenge is maintaining consistency while keeping latency under 50ms.",
-      },
-      {
-        agent: "B",
-        message:
-          "That's a solid challenge! Have you considered event sourcing with CQRS? We used that pattern to handle 100M+ events. Happy to share our architecture docs.",
-      },
-      {
-        agent: "A",
-        message:
-          "That would be incredibly helpful! We've been debating between CQRS and a more traditional approach. Would you be open to a quick call to dive deeper?",
-      },
-      { agent: "B", message: "I'd love to learn more about your use case too. Let's find a time this week." },
-    ],
-    summary:
-      "Strong mutual interest in distributed systems. Both have experience at scale. Sarah offered to share architecture docs. Recommended for follow-up.",
-  },
-  {
-    id: "2",
-    targetName: "Chris Patel",
-    targetRole: "Angel Investor",
-    targetAvatar: "/man-investor-professional.jpg",
-    status: "completed",
-    score: 89,
-    turns: 6,
-    startedAt: "5 hours ago",
-    completedAt: "5 hours ago",
-    messages: [
-      {
-        agent: "A",
-        message:
-          "Hi Chris! I saw you've invested in several B2B SaaS companies in the developer tools space. We're building something in that area.",
-      },
-      { agent: "B", message: "Hi! Developer tools is definitely my sweet spot. What problem are you solving?" },
-      {
-        agent: "A",
-        message:
-          "We're building an AI-powered code review platform that integrates directly into the IDE. Think real-time suggestions, not just async PR reviews.",
-      },
-      {
-        agent: "B",
-        message:
-          "Interesting positioning. The IDE-first approach is smart. What's your GTM strategy? I've seen many dev tools struggle with distribution.",
-      },
-      {
-        agent: "A",
-        message:
-          "We're going PLG with a generous free tier, then enterprise upsell. Already have 2K developers using the beta daily.",
-      },
-      {
-        agent: "B",
-        message:
-          "Those are compelling early numbers. I'd like to hear more about your unit economics and roadmap. Let's schedule a proper intro call.",
-      },
-    ],
-    summary:
-      "Chris is actively looking to invest in developer tools. Strong interest in the product and early traction. High likelihood of investment conversation.",
-  },
-  {
-    id: "3",
-    targetName: "Marcus Reed",
-    targetRole: "Eng Lead @ Series B",
-    targetAvatar: "/man-engineering-lead.jpg",
-    status: "in_progress",
-    turns: 3,
-    startedAt: "30 min ago",
-    messages: [
-      {
-        agent: "A",
-        message:
-          "Hey Marcus! I saw your blog post on scaling React applications. We're facing similar challenges at our startup.",
-      },
-      {
-        agent: "B",
-        message:
-          "Thanks! That post got way more traction than I expected. What specific scaling issues are you running into?",
-      },
-      {
-        agent: "A",
-        message:
-          "Mainly state management across complex forms and real-time collaboration features. We're debating between Redux and Zustand.",
-      },
-    ],
-  },
-]
-
 export function ConnectionsSimulationsSidebar() {
   const [selectedConnection, setSelectedConnection] = useState<ConnectionPreview | null>(null)
   const [selectedSimulation, setSelectedSimulation] = useState<Simulation | null>(null)
   const [activeTab, setActiveTab] = useState<"connections" | "simulations">("connections")
+  const [connections, setConnections] = useState<ConnectionPreview[]>([])
+  const [simulations, setSimulations] = useState<Simulation[]>([])
+  const supabase = createClient()
 
-  const matchedConnections = MOCK_CONNECTIONS.filter((c) => c.status === "matched")
-  const connectedConnections = MOCK_CONNECTIONS.filter((c) => c.status === "connected")
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        // Fetch all simulations
+        const { data: simsData, error: simError } = await supabase
+          .from('simulations')
+          .select('id, participant2, score, transcript, created_at')
+          .eq('participant1', user.id)
+          .order('created_at', { ascending: false })
+          .limit(50)
+
+        if (simError) {
+          console.error("Error fetching simulations:", simError)
+          return
+        }
+
+        if (!simsData || simsData.length === 0) {
+          setConnections([])
+          setSimulations([])
+          return
+        }
+
+        // Fetch user details
+        const userIds = [...new Set(simsData.map(s => s.participant2))]
+        const { data: users, error: usersError } = await supabase
+          .from('users')
+          .select('id, name, tagline, persona')
+          .in('id', userIds)
+
+        if (usersError || !users) {
+          console.error("Error fetching user details:", usersError)
+          return
+        }
+
+        const userMap = new Map(users.map(u => [u.id, u]))
+
+        // Build connections (score >= 70)
+        const connectionsList: ConnectionPreview[] = simsData
+          .filter(s => s.score && s.score >= 70)
+          .map((sim) => {
+            const user = userMap.get(sim.participant2)
+            const persona = user?.persona as any
+            const identity = persona?.identity || {}
+            const tagline = user?.tagline || ""
+            const role = identity?.role || tagline.split("@")[0]?.trim() || "Professional"
+            const company = identity?.company || tagline.split("@")[1]?.split("|")[0]?.trim() || ""
+            const roleText = company ? `${role} @ ${company}` : role
+
+            const transcript = sim.transcript as any[]
+            let icebreaker = "High compatibility match"
+            if (transcript && Array.isArray(transcript) && transcript.length > 0) {
+              const firstMsg = transcript[0]?.text || transcript[0]?.content || ""
+              icebreaker = firstMsg.substring(0, 100) + (firstMsg.length > 100 ? "..." : "")
+            }
+
+            const createdAt = new Date(sim.created_at)
+            const now = new Date()
+            const diffMs = now.getTime() - createdAt.getTime()
+            const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+            const diffDays = Math.floor(diffHours / 24)
+            let matchedAt = "Just now"
+            if (diffDays > 0) {
+              matchedAt = `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
+            } else if (diffHours > 0) {
+              matchedAt = `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
+            } else {
+              const diffMins = Math.floor(diffMs / (1000 * 60))
+              if (diffMins > 0) {
+                matchedAt = `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`
+              }
+            }
+
+            return {
+              id: user?.id || sim.participant2,
+              name: user?.name || "Unknown",
+              role: roleText,
+              avatar: "",
+              compatibility: sim.score || 0,
+              icebreaker,
+              status: "matched" as const,
+              matchedAt,
+            }
+          })
+
+        // Build simulations list
+        const simulationsList: Simulation[] = simsData.map((sim) => {
+          const user = userMap.get(sim.participant2)
+          const persona = user?.persona as any
+          const identity = persona?.identity || {}
+          const tagline = user?.tagline || ""
+          const role = identity?.role || tagline.split("@")[0]?.trim() || "Professional"
+          const company = identity?.company || tagline.split("@")[1]?.split("|")[0]?.trim() || ""
+          const roleText = company ? `${role} @ ${company}` : role
+
+          const transcript = sim.transcript as any[]
+          const messages = (transcript || []).map((msg: any, idx: number) => ({
+            agent: (idx % 2 === 0 ? "A" : "B") as "A" | "B",
+            message: msg.text || msg.content || "",
+          }))
+
+          const createdAt = new Date(sim.created_at)
+          const now = new Date()
+          const diffMs = now.getTime() - createdAt.getTime()
+          const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+          const diffDays = Math.floor(diffHours / 24)
+          let startedAt = "Just now"
+          if (diffDays > 0) {
+            startedAt = `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
+          } else if (diffHours > 0) {
+            startedAt = `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
+          } else {
+            const diffMins = Math.floor(diffMs / (1000 * 60))
+            if (diffMins > 0) {
+              startedAt = `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`
+            }
+          }
+
+          return {
+            id: sim.id,
+            targetName: user?.name || "Unknown",
+            targetRole: roleText,
+            targetAvatar: undefined,
+            status: sim.score !== null && sim.score !== undefined ? "completed" : "in_progress",
+            score: sim.score || undefined,
+            turns: messages.length,
+            startedAt,
+            completedAt: sim.score !== null ? startedAt : undefined,
+            messages,
+            summary: sim.score && sim.score >= 70 ? "High compatibility match" : undefined,
+          }
+        })
+
+        setConnections(connectionsList)
+        setSimulations(simulationsList)
+      } catch (error) {
+        console.error("Error in fetchData:", error)
+      }
+    }
+
+    fetchData()
+  }, [supabase])
+
+  const matchedConnections = connections.filter((c) => c.status === "matched")
+  const connectedConnections = connections.filter((c) => c.status === "connected")
+
+  // Function definitions continue below
 
   const getStatusIcon = (status: Simulation["status"]) => {
     switch (status) {
@@ -241,10 +228,10 @@ export function ConnectionsSimulationsSidebar() {
           <div className="px-4 pt-4 pb-2 border-b border-border">
             <TabsList className="w-full bg-secondary/50">
               <TabsTrigger value="connections" className="flex-1 text-xs">
-                Connections ({MOCK_CONNECTIONS.length})
+                Connections ({connections.length})
               </TabsTrigger>
               <TabsTrigger value="simulations" className="flex-1 text-xs">
-                Simulations ({MOCK_SIMULATIONS.length})
+                Simulations ({simulations.length})
               </TabsTrigger>
             </TabsList>
           </div>
@@ -322,7 +309,7 @@ export function ConnectionsSimulationsSidebar() {
           <TabsContent value="simulations" className="flex-1 mt-0 overflow-hidden">
             <ScrollArea className="h-full">
               <div className="divide-y divide-border">
-                {MOCK_SIMULATIONS.map((simulation) => (
+                {simulations.map((simulation) => (
                   <button
                     key={simulation.id}
                     className="w-full p-3 hover:bg-secondary/30 transition-colors text-left"

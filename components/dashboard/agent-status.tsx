@@ -4,16 +4,64 @@ import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Play, Pause, RefreshCw, Zap } from "lucide-react"
+import { Play, Pause, RefreshCw, Zap, Sparkles, Loader2 } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 
 export function AgentStatus() {
   const [isActive, setIsActive] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isRunningSimulation, setIsRunningSimulation] = useState(false)
 
   const handleRefresh = async () => {
     setIsRefreshing(true)
     await new Promise((resolve) => setTimeout(resolve, 1500))
     setIsRefreshing(false)
+  }
+
+  const handleRunSimulation = async () => {
+    console.log("Run Simulation button clicked")
+    setIsRunningSimulation(true)
+    try {
+      const supabase = createClient()
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      
+      if (authError) {
+        console.error("Auth error:", authError)
+        alert("Authentication error: " + authError.message)
+        return
+      }
+      
+      if (!user) {
+        console.error("No user found")
+        alert("You must be logged in")
+        return
+      }
+
+      console.log("Calling simulation API for user:", user.id)
+      const res = await fetch('/api/simulation/instant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id })
+      })
+
+      console.log("Simulation API response status:", res.status)
+      const data = await res.json()
+      console.log("Simulation API response:", data)
+
+      if (data.success) {
+        console.log("Simulation successful, reloading page...")
+        // Refresh the page to show new simulation
+        setTimeout(() => window.location.reload(), 500)
+      } else {
+        console.error("Simulation failed:", data.error)
+        alert(data.error || "Failed to run simulation")
+      }
+    } catch (error: any) {
+      console.error("Simulation error:", error)
+      alert(error.message || "Failed to run simulation")
+    } finally {
+      setIsRunningSimulation(false)
+    }
   }
 
   return (
@@ -41,7 +89,29 @@ export function AgentStatus() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+            <Button
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                handleRunSimulation()
+              }}
+              disabled={isRunningSimulation}
+              className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
+              type="button"
+            >
+              {isRunningSimulation ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Running...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  Run Simulation
+                </>
+              )}
+            </Button>
             <Button
               variant="outline"
               size="sm"

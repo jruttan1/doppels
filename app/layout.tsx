@@ -7,7 +7,6 @@ export const metadata: Metadata = {
   title: "Doppel | Agent-to-Agent Networking",
   description:
     "Deploy your digital twin to find the perfect professional connections. Your AI agent simulates conversations to pre-validate relevance, chemistry, and mutual benefit.",
-  generator: "v0.app",
   keywords: ["networking", "AI", "agent", "professional connections", "co-founder", "hiring"],
   openGraph: {
     title: "Doppel | Agent-to-Agent Networking",

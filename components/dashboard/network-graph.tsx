@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ZoomIn, ZoomOut, Search, Sparkles, Calendar, MessageSquare } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress"
-import { PROFILES } from "./mock-profiles"
+import { createClient } from "@/lib/supabase/client"
 
 interface NetworkNode {
   id: string
@@ -28,17 +28,6 @@ interface NetworkNode {
   skills: string[]
 }
 
-const MOCK_NODES: Omit<NetworkNode, "x" | "y" | "vx" | "vy">[] = PROFILES.map((profile) => ({
-  id: profile.id,
-  status: profile.status,
-  name: profile.name,
-  role: profile.role,
-  company: profile.company,
-  compatibility: profile.compatibility,
-  avatar: profile.avatar,
-  skills: profile.skills,
-}))
-
 export function NetworkGraph() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -53,6 +42,19 @@ export function NetworkGraph() {
   const [zoom, setZoom] = useState(1)
   const [filter, setFilter] = useState<"all" | "matched" | "simulated" | "unexplored">("all")
   const [searchQuery, setSearchQuery] = useState("")
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const supabase = createClient()
+
+  // Get current user ID
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        setCurrentUserId(user.id)
+      }
+    }
+    getCurrentUser()
+  }, [supabase])
   
   // Update refs when state changes and trigger redraw
   useEffect(() => {
@@ -73,116 +75,272 @@ export function NetworkGraph() {
     }
   }, [filter])
 
+  // Fetch users and their simulation statuses
   useEffect(() => {
-    const container = containerRef.current
-    if (!container) return
+    const fetchUsers = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
 
-    const rect = container.getBoundingClientRect()
-    const centerX = rect.width / 2
-    const centerY = rect.height / 2
+        // Fetch all users with personas (excluding current user)
+        const { data: allUsers, error: usersError } = await supabase
+          .from('users')
+          .select('id, name, tagline, persona, skills')
+          .neq('id', user.id)
+          .not('persona', 'is', null)
+          .not('persona', 'eq', '{}')
 
-    // Helper function to get node size for collision detection
-    const getNodeSize = (status: NetworkNode["status"]) => {
-      switch (status) {
-        case "connected": return 16
-        case "matched": return 14
-        case "simulated": return 10
-        default: return 8
+        if (usersError || !allUsers) {
+          console.error("Error fetching users:", usersError)
+          return
+        }
+
+        // Fetch simulations for current user to determine status
+        const { data: simulations, error: simError } = await supabase
+          .from('simulations')
+          .select('participant2, score')
+          .eq('participant1', user.id)
+
+        if (simError) {
+          console.error("Error fetching simulations:", simError)
+        }
+
+        // Create a map of user_id -> best score
+        const userScores = new Map<string, number>()
+        simulations?.forEach((sim) => {
+          const existing = userScores.get(sim.participant2)
+          if (!existing || (sim.score && sim.score > existing)) {
+            userScores.set(sim.participant2, sim.score || 0)
+          }
+        })
+
+        // Map users to network nodes
+        const userNodes: Omit<NetworkNode, "x" | "y" | "vx" | "vy">[] = allUsers.map((u) => {
+          const score = userScores.get(u.id)
+          let status: "unexplored" | "simulated" | "matched" | "connected" = "unexplored"
+          
+          if (score !== undefined) {
+            if (score >= 70) {
+              status = "matched"
+            } else {
+              status = "simulated"
+            }
+          }
+
+          // Extract role and company from tagline or persona
+          const tagline = u.tagline || ""
+          const persona = u.persona as any
+          const identity = persona?.identity || {}
+          const role = identity?.role || tagline.split("@")[0]?.trim() || "Professional"
+          const company = identity?.company || tagline.split("@")[1]?.split("|")[0]?.trim() || "Unknown"
+          const skills = u.skills || persona?.skills_possessed || []
+
+          return {
+            id: u.id,
+            status,
+            name: u.name || "Unknown",
+            role,
+            company,
+            compatibility: score,
+            avatar: undefined,
+            skills: Array.isArray(skills) ? skills : [],
+          }
+        })
+
+        // Initialize layout
+        const container = containerRef.current
+        if (!container) return
+
+        const rect = container.getBoundingClientRect()
+        const centerX = rect.width / 2
+        const centerY = rect.height / 2
+
+        // Helper function to get node size for collision detection
+        const getNodeSize = (status: NetworkNode["status"]) => {
+          switch (status) {
+            case "connected": return 16
+            case "matched": return 14
+            case "simulated": return 10
+            default: return 8
+          }
+        }
+
+        // Get minimum required distance between two nodes
+        const getMinDistance = (node1: NetworkNode, node2: NetworkNode) => {
+          const size1 = getNodeSize(node1.status)
+          const size2 = getNodeSize(node2.status)
+          return size1 + size2 + 50
+        }
+
+        // Collision detection function
+        const hasCollision = (x: number, y: number, existingNodes: NetworkNode[], currentNode: NetworkNode) => {
+          return existingNodes.some((existing) => {
+            const dist = Math.hypot(x - existing.x, y - existing.y)
+            const minDist = getMinDistance(currentNode, existing)
+            return dist < minDist
+          })
+        }
+
+        const padding = 60
+        const maxCanvasRadius = Math.min(rect.width, rect.height) / 2 - padding
+        
+        // Initialize nodes with random positions across the entire canvas
+        const initialNodes: NetworkNode[] = userNodes.map((node) => {
+          const x = padding + Math.random() * (rect.width - padding * 2)
+          const y = padding + Math.random() * (rect.height - padding * 2)
+          
+          return {
+            ...node,
+            x,
+            y,
+            vx: (Math.random() - 0.5) * 3,
+            vy: (Math.random() - 0.5) * 3,
+          }
+        })
+
+        // Build connection graph: create connections between nodes
+        const connections: Array<[number, number, number]> = [] // [i, j, strength]
+        
+        initialNodes.forEach((node, i) => {
+          initialNodes.forEach((other, j) => {
+            if (i >= j) return
+            
+            let strength = 0
+            
+            // Strong connections: same status (connected/matched)
+            if (
+              (node.status === "connected" && other.status === "connected") ||
+              (node.status === "matched" && other.status === "matched")
+            ) {
+              strength = 1.0
+            }
+            // Medium connections: connected/matched cross-connections
+            else if (
+              (node.status === "connected" && other.status === "matched") ||
+              (node.status === "matched" && other.status === "connected")
+            ) {
+              strength = 0.8
+            }
+            // Weak connections: connect to simulated nodes
+            else if (
+              (node.status === "connected" || node.status === "matched") &&
+              (other.status === "simulated")
+            ) {
+              strength = 0.3
+            }
+            // Very weak connections: connect simulated to simulated
+            else if (
+              node.status === "simulated" && other.status === "simulated"
+            ) {
+              strength = 0.2
+            }
+            
+            if (strength > 0) {
+              connections.push([i, j, strength])
+            }
+          })
+        })
+
+        // Force-directed layout simulation (no circular constraints)
+        const iterations = 250
+        const k = Math.sqrt((rect.width * rect.height) / initialNodes.length) * 1.3 // Optimal distance between nodes
+        const temperature = Math.max(rect.width, rect.height) / 8 // Higher temperature for more movement
+        let currentTemp = temperature
+        
+        for (let iter = 0; iter < iterations; iter++) {
+          initialNodes.forEach((node, i) => {
+            let fx = 0
+            let fy = 0
+            
+            // Repulsion from other nodes (spreads them out)
+            initialNodes.forEach((other, j) => {
+              if (i === j) return
+              
+              const dx = node.x - other.x
+              const dy = node.y - other.y
+              const dist = Math.sqrt(dx * dx + dy * dy) || 0.1
+              
+              // Repulsion for all nodes, stronger when close
+              if (dist < k * 2.5) {
+                const repulsion = (k * k) / (dist * dist)
+                fx += (dx / dist) * repulsion * 0.6
+                fy += (dy / dist) * repulsion * 0.6
+              }
+            })
+            
+            // Attraction forces from connections (creates natural clustering)
+            connections.forEach(([a, b, strength]) => {
+              if (a === i || b === i) {
+                const other = initialNodes[a === i ? b : a]
+                const dx = node.x - other.x
+                const dy = node.y - other.y
+                const dist = Math.sqrt(dx * dx + dy * dy) || 0.1
+                
+                // Spring force: attract connected nodes to optimal distance
+                const idealDist = k * (0.7 + (1 - strength) * 0.6) // Stronger connections = closer
+                const force = (dist - idealDist) / k
+                fx -= (dx / dist) * force * strength * 0.7
+                fy -= (dy / dist) * force * strength * 0.7
+              }
+            })
+            
+            // Weak attraction to center for connected/matched nodes only (keeps them somewhat central but not circular)
+            if (node.status === "connected" || node.status === "matched") {
+              const dxToCenter = node.x - centerX
+              const dyToCenter = node.y - centerY
+              const distToCenter = Math.sqrt(dxToCenter * dxToCenter + dyToCenter * dyToCenter) || 0.1
+              
+              // Very weak force to keep important nodes from going to edges, but allow free movement
+              const centerPull = 0.02
+              fx -= (dxToCenter / distToCenter) * centerPull * 30
+              fy -= (dyToCenter / distToCenter) * centerPull * 30
+            }
+            
+            // Update velocity with damping
+            node.vx = (node.vx + fx) * 0.9
+            node.vy = (node.vy + fy) * 0.9
+            
+            // Limit velocity by temperature
+            const v = Math.sqrt(node.vx * node.vx + node.vy * node.vy)
+            if (v > currentTemp) {
+              node.vx = (node.vx / v) * currentTemp
+              node.vy = (node.vy / v) * currentTemp
+            }
+            
+            // Update position
+            node.x += node.vx
+            node.y += node.vy
+            
+            // Keep within bounds (soft boundary)
+            const margin = padding * 0.2
+            if (node.x < margin) {
+              node.x = margin
+              node.vx *= -0.3
+            } else if (node.x > rect.width - margin) {
+              node.x = rect.width - margin
+              node.vx *= -0.3
+            }
+            if (node.y < margin) {
+              node.y = margin
+              node.vy *= -0.3
+            } else if (node.y > rect.height - margin) {
+              node.y = rect.height - margin
+              node.vy *= -0.3
+            }
+          })
+          
+          // Cool down temperature
+          currentTemp = temperature * (1 - iter / iterations) * 0.5
+        }
+
+        setNodes(initialNodes)
+      } catch (error) {
+        console.error("Error fetching network data:", error)
       }
     }
 
-    // Get minimum required distance between two nodes (reduced since no names)
-    const getMinDistance = (node1: NetworkNode, node2: NetworkNode) => {
-      const size1 = getNodeSize(node1.status)
-      const size2 = getNodeSize(node2.status)
-      // Node sizes + padding (no text label space needed)
-      return size1 + size2 + 40
-    }
-
-    // Collision detection function
-    const hasCollision = (x: number, y: number, existingNodes: NetworkNode[], currentNode: NetworkNode) => {
-      return existingNodes.some((existing) => {
-        const dist = Math.hypot(x - existing.x, y - existing.y)
-        const minDist = getMinDistance(currentNode, existing)
-        return dist < minDist
-      })
-    }
-
-    // Sort nodes by status for ring placement: green (matched) first, then purple (connected), then teal (simulated), then grey (unexplored)
-    const sortedNodes = [...MOCK_NODES].sort((a, b) => {
-      const statusOrder = { matched: 0, connected: 1, simulated: 2, unexplored: 3 }
-      return statusOrder[a.status] - statusOrder[b.status]
-    })
-
-    const initialNodes: NetworkNode[] = []
-    const padding = 60
-    const maxRadius = Math.min(rect.width, rect.height) / 2 - padding
-
-    // Define rings based on status: green first, then purple, then teal, then grey
-    const matchedNodes = sortedNodes.filter(n => n.status === "matched")
-    const connectedNodes = sortedNodes.filter(n => n.status === "connected")
-    const simulatedNodes = sortedNodes.filter(n => n.status === "simulated")
-    const unexploredNodes = sortedNodes.filter(n => n.status === "unexplored")
-
-    const rings = [
-      { nodes: matchedNodes, baseRadius: 100, spacing: 80 },      // Green - first ring
-      { nodes: connectedNodes, baseRadius: 180, spacing: 80 },    // Purple - second ring
-      { nodes: simulatedNodes, baseRadius: 260, spacing: 80 },    // Teal - third ring
-      { nodes: unexploredNodes, baseRadius: 340, spacing: 80 },   // Grey - fourth ring
-    ]
-
-    rings.forEach(ring => {
-      const { nodes: ringNodes, baseRadius, spacing } = ring
-      const currentRingRadius = Math.min(baseRadius, maxRadius)
-
-      ringNodes.forEach((node, i) => {
-        let attempts = 0
-        let x = 0
-        let y = 0
-        let foundPosition = false
-
-        while (!foundPosition && attempts < 200) {
-          const angle = (i / ringNodes.length) * Math.PI * 2 + (Math.random() - 0.5) * (Math.PI / ringNodes.length) * 0.8
-          const radiusVariation = (Math.random() - 0.5) * 30
-          const radius = currentRingRadius + radiusVariation
-
-          x = centerX + Math.cos(angle) * radius
-          y = centerY + Math.sin(angle) * radius
-
-          // Check bounds
-          if (x < padding || x > rect.width - padding || y < padding || y > rect.height - padding) {
-            attempts++
-            continue
-          }
-
-          // Check collision
-          if (!hasCollision(x, y, initialNodes, { ...node, x, y, vx: 0, vy: 0 })) {
-            foundPosition = true
-          } else {
-            attempts++
-          }
-        }
-
-        // Fallback
-        if (!foundPosition) {
-          const gridX = (initialNodes.length % 10) * 80 + padding
-          const gridY = Math.floor(initialNodes.length / 10) * 80 + padding
-          x = gridX
-          y = gridY
-        }
-
-        initialNodes.push({
-          ...node,
-          x: Math.max(padding, Math.min(rect.width - padding, x)),
-          y: Math.max(padding, Math.min(rect.height - padding, y)),
-          vx: 0,
-          vy: 0,
-        })
-      })
-    })
-
-    setNodes(initialNodes)
-  }, [])
+    fetchUsers()
+  }, [supabase])
 
   const filteredNodes = useMemo(() => {
     const result = nodes.filter((node) => {
@@ -286,59 +444,69 @@ export function NetworkGraph() {
         ctx.stroke()
       })
 
-      // Draw inter-node connections (web-like network showing all connections)
-      // Show connections between all nodes that are matched or connected
+      // Draw inter-node connections based on connection graph
+      // Recreate connection logic (same as layout)
       nodes.forEach((node, i) => {
-        if (node.status === "matched" || node.status === "connected") {
-          nodes.slice(i + 1).forEach((other) => {
-            // Show connections between any matched/connected nodes (not just to center)
-            if (other.status === "matched" || other.status === "connected") {
-              const isNodeFiltered = currentFilteredNodes.some((n) => n.id === node.id)
-              const isOtherFiltered = currentFilteredNodes.some((n) => n.id === other.id)
-              if (!isNodeFiltered || !isOtherFiltered) return
-              const dist = Math.hypot(node.x - other.x, node.y - other.y)
-              // Increase connection distance threshold to show more connections
-              if (dist < 300) {
-                ctx.beginPath()
-                ctx.moveTo(node.x, node.y)
-                ctx.lineTo(other.x, other.y)
-                // Use different colors for different connection types
-                const connectionOpacity = 0.2 * (1 - dist / 300)
-                if (node.status === "connected" && other.status === "connected") {
-                  ctx.strokeStyle = `rgba(168, 85, 247, ${connectionOpacity})`
-                } else {
-                  ctx.strokeStyle = `rgba(34, 197, 94, ${connectionOpacity})`
-                }
-                ctx.lineWidth = 1
-                ctx.stroke()
-              }
-            }
-          })
-        }
-      })
-      
-      // Also show connections from simulated nodes to matched/connected nodes
-      nodes.forEach((node) => {
-        if (node.status === "simulated") {
-          const isNodeFiltered = currentFilteredNodes.some((n) => n.id === node.id)
-          if (!isNodeFiltered) return
+        const isNodeFiltered = currentFilteredNodes.some((n) => n.id === node.id)
+        if (!isNodeFiltered) return
+        
+        nodes.slice(i + 1).forEach((other, j) => {
+          const isOtherFiltered = currentFilteredNodes.some((n) => n.id === other.id)
+          if (!isOtherFiltered) return
           
-          nodes.forEach((other) => {
-            if ((other.status === "matched" || other.status === "connected") && other.id !== node.id) {
-              const isOtherFiltered = currentFilteredNodes.some((n) => n.id === other.id)
-              if (!isOtherFiltered) return
-              const dist = Math.hypot(node.x - other.x, node.y - other.y)
-              if (dist < 250) {
-                ctx.beginPath()
-                ctx.moveTo(node.x, node.y)
-                ctx.lineTo(other.x, other.y)
-                ctx.strokeStyle = `rgba(45, 212, 191, ${0.1 * (1 - dist / 250)})`
-                ctx.lineWidth = 0.5
-                ctx.stroke()
-              }
+          let strength = 0
+          let connectionColor = "rgba(100, 116, 139, 0.1)"
+          
+          // Strong connections: same status (connected/matched)
+          if (
+            (node.status === "connected" && other.status === "connected") ||
+            (node.status === "matched" && other.status === "matched")
+          ) {
+            strength = 1.0
+            if (node.status === "connected") {
+              connectionColor = "rgba(168, 85, 247, 0.4)"
+            } else {
+              connectionColor = "rgba(34, 197, 94, 0.4)"
             }
-          })
-        }
+          }
+          // Medium connections: connected/matched cross-connections
+          else if (
+            (node.status === "connected" && other.status === "matched") ||
+            (node.status === "matched" && other.status === "connected")
+          ) {
+            strength = 0.8
+            connectionColor = "rgba(168, 85, 247, 0.3)"
+          }
+          // Weak connections: connect to simulated nodes
+          else if (
+            (node.status === "connected" || node.status === "matched") &&
+            (other.status === "simulated")
+          ) {
+            strength = 0.3
+            connectionColor = "rgba(45, 212, 191, 0.2)"
+          }
+          // Very weak connections: connect simulated to simulated
+          else if (
+            node.status === "simulated" && other.status === "simulated"
+          ) {
+            strength = 0.2
+            connectionColor = "rgba(45, 212, 191, 0.15)"
+          }
+          
+          if (strength > 0) {
+            const dist = Math.hypot(node.x - other.x, node.y - other.y)
+            const maxDist = 400 // Maximum distance to draw connection
+            if (dist < maxDist) {
+              ctx.beginPath()
+              ctx.moveTo(node.x, node.y)
+              ctx.lineTo(other.x, other.y)
+              const opacity = strength * (1 - dist / maxDist) * 0.6
+              ctx.strokeStyle = connectionColor.replace(/[\d\.]+\)$/, `${opacity})`)
+              ctx.lineWidth = strength * 1.5
+              ctx.stroke()
+            }
+          }
+        })
       })
 
       // Draw center node
@@ -438,24 +606,36 @@ export function NetworkGraph() {
       const adjustedX = (x - centerX) / zoom + centerX
       const adjustedY = (y - centerY) / zoom + centerY
 
+      // Check if hovering over center "YOU" node (don't allow hover/click on it)
+      const distToCenter = Math.hypot(adjustedX - centerX, adjustedY - centerY)
+      if (distToCenter < 30) {
+        setHoveredNode(null)
+        return
+      }
+
       const hovered = filteredNodes.find((node) => {
+        // Also exclude current user's node from hover
+        if (node.id === currentUserId) return false
         const dist = Math.hypot(node.x - adjustedX, node.y - adjustedY)
         return dist < 25
       })
       setHoveredNode(hovered || null)
     },
-    [filteredNodes, zoom],
+    [filteredNodes, zoom, currentUserId],
   )
 
   const handleClick = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
       if (!hoveredNode) return
       
+      // Prevent selecting the current user's node
+      if (hoveredNode.id === currentUserId) return
+      
       if (hoveredNode.status === "matched" || hoveredNode.status === "connected") {
         setSelectedNode(hoveredNode)
       }
     },
-    [hoveredNode],
+    [hoveredNode, currentUserId],
   )
 
   // Mouse wheel zoom disabled
@@ -476,9 +656,8 @@ export function NetworkGraph() {
 
   return (
     <>
-      <Card className="bg-card border-border shadow-md">
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-lg">Network Map</CardTitle>
+      <Card className="bg-card border-border shadow-md h-full flex flex-col overflow-hidden">
+        <CardHeader className="flex flex-row items-center justify-between pb-2 flex-shrink-0">
           <div className="flex items-center gap-2">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -543,8 +722,8 @@ export function NetworkGraph() {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-0">
-          <div ref={containerRef} className="relative h-[600px]">
+        <CardContent className="p-0 h-full">
+          <div ref={containerRef} className="relative h-full w-full">
             <canvas
               ref={canvasRef}
               className="w-full h-full cursor-crosshair"
@@ -642,7 +821,7 @@ export function NetworkGraph() {
                             .join("")}
                         </AvatarFallback>
                       </Avatar>
-                      {selectedNode.status === "matched" && (
+                      {selectedNode.status === "matched" && selectedNode.id !== currentUserId && (
                         <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-green-500 border-2 border-card flex items-center justify-center">
                           <Sparkles className="w-3 h-3 text-white" />
                         </div>
@@ -653,14 +832,16 @@ export function NetworkGraph() {
                       <p className="text-sm text-muted-foreground">
                         {selectedNode.role} @ {selectedNode.company}
                       </p>
-                      <div className="flex items-center gap-2 mt-2">
-                        {selectedNode.compatibility && (
-                          <Badge className="bg-green-500/10 text-green-500">{selectedNode.compatibility}% Match</Badge>
-                        )}
-                        <Badge variant="secondary" className="capitalize">
-                          {selectedNode.status}
-                        </Badge>
-                      </div>
+                      {selectedNode.id !== currentUserId && (
+                        <div className="flex items-center gap-2 mt-2">
+                          {selectedNode.compatibility && (
+                            <Badge className="bg-green-500/10 text-green-500">{selectedNode.compatibility}% Match</Badge>
+                          )}
+                          <Badge variant="secondary" className="capitalize">
+                            {selectedNode.status}
+                          </Badge>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </DialogHeader>
@@ -677,7 +858,7 @@ export function NetworkGraph() {
                     </div>
                   </div>
 
-                  {selectedNode.compatibility && (
+                  {selectedNode.compatibility && selectedNode.id !== currentUserId && (
                     <div className="space-y-4">
                       <h4 className="text-sm font-medium">Compatibility Breakdown</h4>
                       <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2">
@@ -706,16 +887,18 @@ export function NetworkGraph() {
                     </div>
                   )}
 
-                  <div className="flex flex-col sm:flex-row gap-3 pt-2 pb-4 sm:pb-0">
-                    <Button className="flex-1 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground">
-                      <Calendar className="w-4 h-4" />
-                      Book Coffee Chat
-                    </Button>
-                    <Button variant="outline" className="flex-1 gap-2 bg-transparent">
-                      <MessageSquare className="w-4 h-4" />
-                      View Simulation
-                    </Button>
-                  </div>
+                  {selectedNode.id !== currentUserId && (
+                    <div className="flex flex-col sm:flex-row gap-3 pt-2 pb-4 sm:pb-0">
+                      <Button className="flex-1 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground">
+                        <Calendar className="w-4 h-4" />
+                        Book Coffee Chat
+                      </Button>
+                      <Button variant="outline" className="flex-1 gap-2 bg-transparent">
+                        <MessageSquare className="w-4 h-4" />
+                        View Simulation
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             </>

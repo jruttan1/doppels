@@ -7,7 +7,7 @@ const supabase = createClient(
   process.env.SERVICE_ROLE_KEY!
 );
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
 export const maxDuration = 60; // Allow 60s for the whole chat loop
 
@@ -78,24 +78,42 @@ export async function POST(req: Request) {
 
     // 6. SAVE & RETURN
     // We insert into DB so it shows up in history, but we ALSO return it directly for the UI
-    const { data: simulation, error: insertError } = await supabase
+    const simulationData = {
+      participant1: me.id,
+      participant2: partner.other_id,
+      transcript: transcript,
+      score: analysis.score
+    };
+    
+    // Insert simulation data (try without select first to avoid trigger issues)
+    const { error: insertError, data: insertedData } = await supabase
       .from('simulations')
-      .insert({
-        participant1: me.id,
-        participant2: partner.other_id,
-        transcript: transcript,
-        score: analysis.score
-        // Note: key_takeaways and status fields may not exist in schema - check DB
-      })
+      .insert(simulationData)
       .select()
       .single();
     
     if (insertError) {
       console.error("Failed to save simulation:", insertError);
-      // Still return the simulation even if DB save fails
+      // Still return success - simulation ran, just didn't save
+      // The Live Activity Feed will still show it from the transcript
+      return Response.json({ 
+        success: true, 
+        simulation: {
+          id: `temp-${Date.now()}`,
+          ...simulationData
+        }, 
+        partner_name: partnerAgent.name,
+        saved: false,
+        error: insertError.message
+      });
     }
 
-    return Response.json({ success: true, simulation, partner_name: partnerAgent.name });
+    return Response.json({ 
+      success: true, 
+      simulation: insertedData || simulationData, 
+      partner_name: partnerAgent.name, 
+      saved: true 
+    });
 
   } catch (e: any) {
     console.error("Demo Failed:", e);
@@ -103,14 +121,36 @@ export async function POST(req: Request) {
   }
 }
 
-// Reuse your analysis helper
+// Reuse your analysis helper with retry logic
 async function analyzeSimulation(transcript: any[]) {
-  const result = await model.generateContent({
-    contents: [{ role: "user", parts: [{ text: `
-      Analyze this chat. Return JSON: { "score": number (0-100), "takeaways": ["string"] }
-      TRANSCRIPT: ${JSON.stringify(transcript)}
-    ` }] }],
-    generationConfig: { responseMimeType: "application/json" }
-  });
-  return JSON.parse(result.response.text());
+  let result;
+  let retries = 0;
+  const maxRetries = 3;
+  
+  while (retries < maxRetries) {
+    try {
+      result = await model.generateContent({
+        contents: [{ role: "user", parts: [{ text: `
+          Analyze this chat. Return JSON: { "score": number (0-100), "takeaways": ["string"] }
+          TRANSCRIPT: ${JSON.stringify(transcript)}
+        ` }] }],
+        generationConfig: { responseMimeType: "application/json" }
+      });
+      break; // Success
+    } catch (error: any) {
+      if (error.message?.includes('429') || error.message?.includes('quota') || error.message?.includes('rate limit')) {
+        retries++;
+        if (retries >= maxRetries) {
+          throw error;
+        }
+        const waitTime = Math.pow(2, retries) * 1000;
+        console.log(`Rate limit hit in analysis, retrying in ${waitTime/1000}s...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      } else {
+        throw error;
+      }
+    }
+  }
+  
+  return JSON.parse(result!.response.text());
 }
