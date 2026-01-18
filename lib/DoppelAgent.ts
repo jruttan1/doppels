@@ -1,7 +1,17 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+// Initialize Gemini AI with error handling
+let genAI: GoogleGenerativeAI | null = null;
+let model: any = null;
+
+try {
+  if (process.env.GEMINI_API_KEY) {
+    genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  }
+} catch (error) {
+  console.error("Failed to initialize Gemini AI:", error);
+}
 
 export interface AgentPersona {
   id: string;
@@ -130,6 +140,11 @@ REMEMBER: You are ${this.name}, a real person. Write as yourself, using your aut
       const prompt = lastMessage 
         ? `The other person just said: "${lastMessage}"${conversationContext}\n\nRespond naturally as ${this.name}. Be authentic, avoid repetition, and write a complete message (2-5 sentences) that feels genuinely human.`
         : `Start a conversation as ${this.name}. Introduce yourself naturally, mention what you're working on or looking for, and reference your background. Write 2-5 sentences that feel authentic and human.${conversationContext}`;
+
+      // Check if model is initialized
+      if (!model) {
+        throw new Error("Gemini AI model not initialized. Check GEMINI_API_KEY environment variable.");
+      }
 
       // Generate reply with retry logic for rate limits
       let result;

@@ -136,15 +136,15 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             <ConnectionsSimulationsSidebar />
           </div>
 
-          {/* User menu */}
-          <div className="px-3 py-4 border-t border-border">
+          {/* User menu - hidden on desktop, shown on mobile */}
+          <div className="px-3 py-4 border-t border-border lg:hidden">
             <DropdownMenu open={userMenuOpen} onOpenChange={setUserMenuOpen}>
               <DropdownMenuTrigger asChild>
-                <button className="w-full lg:w-auto flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-secondary transition-colors">
+                <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-secondary transition-colors">
                   <Avatar className="w-8 h-8">
                     <AvatarFallback>{getInitials(userData.name, userData.email)}</AvatarFallback>
                   </Avatar>
-                  <div className="flex-1 lg:hidden text-left min-w-0">
+                  <div className="flex-1 text-left min-w-0">
                     <p className="text-sm font-medium truncate">{displayName}</p>
                     <p className="text-xs text-muted-foreground truncate">{displayEmail}</p>
                   </div>

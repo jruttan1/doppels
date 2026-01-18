@@ -1,41 +1,55 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Play, Pause, RefreshCw, Zap, Sparkles, Loader2 } from "lucide-react"
+import { Play, Pause, Sparkles, Loader2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+
+// Auto-simulation interval in milliseconds (30 seconds)
+const AUTO_SIMULATION_INTERVAL = 30000
 
 export function AgentStatus() {
   const [isActive, setIsActive] = useState(true)
-  const [isRefreshing, setIsRefreshing] = useState(false)
   const [isRunningSimulation, setIsRunningSimulation] = useState(false)
+  const [lastSimulationTime, setLastSimulationTime] = useState<Date | null>(null)
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const isMountedRef = useRef(true)
+  const isRunningRef = useRef(false)
 
-  const handleRefresh = async () => {
-    setIsRefreshing(true)
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-    setIsRefreshing(false)
-  }
+  const runSimulation = useCallback(async (isAuto: boolean = false) => {
+    // Prevent running if already running
+    if (isRunningRef.current) {
+      console.log("Simulation already running, skipping...")
+      return
+    }
 
-  const handleRunSimulation = async () => {
-    console.log("Run Simulation button clicked")
+    isRunningRef.current = true
     setIsRunningSimulation(true)
+
+    if (!isAuto) {
+      console.log("Run Simulation button clicked")
+    } else {
+      console.log("Auto-running simulation...")
+    }
     try {
       const supabase = createClient()
       const { data: { user }, error: authError } = await supabase.auth.getUser()
       
       if (authError) {
         console.error("Auth error:", authError)
-        alert("Authentication error: " + authError.message)
-        setIsRunningSimulation(false)
+        if (!isAuto) {
+          alert("Authentication error: " + authError.message)
+        }
         return
       }
       
       if (!user) {
         console.error("No user found")
-        alert("You must be logged in")
-        setIsRunningSimulation(false)
+        if (!isAuto) {
+          alert("You must be logged in")
+        }
         return
       }
 
@@ -49,6 +63,18 @@ export function AgentStatus() {
       })
 
       console.log("Auto-connect API response status:", res.status)
+      
+      // Check if response is JSON
+      const contentType = res.headers.get('content-type')
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await res.text()
+        console.error("Non-JSON response received:", text.substring(0, 200))
+        if (!isAuto) {
+          throw new Error(`Server error (${res.status}): Received non-JSON response. This usually means the server encountered an error.`)
+        }
+        return
+      }
+      
       const data = await res.json()
       console.log("Auto-connect API response:", data)
 
@@ -56,24 +82,106 @@ export function AgentStatus() {
         const simulationsRun = data.simulationsRun || 0
         const total = data.total || 0
         console.log(`Auto-connect successful: ${simulationsRun} simulations run out of ${total} total`)
+        setLastSimulationTime(new Date())
         
         if (simulationsRun > 0) {
-          // Refresh the page to show new simulations
-          setTimeout(() => window.location.reload(), 1000)
+          // Only reload page if not auto-running (to avoid disrupting user)
+          if (!isAuto) {
+            setTimeout(() => window.location.reload(), 1000)
+          } else {
+            // For auto-simulations, just refresh the data without full page reload
+            setTimeout(() => {
+              if (isMountedRef.current) {
+                window.dispatchEvent(new CustomEvent('simulation-completed'))
+              }
+            }, 500)
+          }
         } else {
-          alert(data.message || "No new simulations to run. You may have already simulated with all available users.")
-          setIsRunningSimulation(false)
+          if (!isAuto) {
+            alert(data.message || "No new simulations to run. You may have already simulated with all available users.")
+          }
         }
       } else {
-        console.error("Auto-connect failed:", data.error || data.message)
-        alert(data.error || data.message || "Failed to run simulations")
-        setIsRunningSimulation(false)
+        const errorMsg = data.error || data.message || `Server error (${res.status})`
+        console.error("Auto-connect failed:", errorMsg)
+        if (!isAuto) {
+          alert(errorMsg)
+        }
       }
     } catch (error: any) {
       console.error("Simulation error:", error)
-      alert(error.message || "Failed to run simulations")
+      const errorMessage = error.message || error.toString() || "Failed to run simulations"
+      if (!isAuto) {
+        alert(errorMessage)
+      }
+    } finally {
+      isRunningRef.current = false
       setIsRunningSimulation(false)
     }
+  }, [])
+
+  const handleRunSimulation = useCallback(() => runSimulation(false), [runSimulation])
+
+  // Auto-simulation effect
+  useEffect(() => {
+    isMountedRef.current = true
+
+    if (isActive) {
+      // Set up interval for auto-simulation
+      intervalRef.current = setInterval(() => {
+        if (isMountedRef.current && isActive && !isRunningRef.current) {
+          runSimulation(true).catch(console.error)
+        }
+      }, AUTO_SIMULATION_INTERVAL)
+
+      // Run first simulation after a short delay if none has run yet
+      if (!lastSimulationTime) {
+        const initialDelay = setTimeout(() => {
+          if (isMountedRef.current && isActive && !isRunningRef.current) {
+            runSimulation(true).catch(console.error)
+          }
+        }, 5000) // Wait 5 seconds before first auto-simulation
+
+        return () => {
+          clearTimeout(initialDelay)
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current)
+          }
+        }
+      }
+    } else {
+      // Clear interval if paused
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
+    }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
+    }
+  }, [isActive, lastSimulationTime, runSimulation])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+      }
+    }
+  }, [])
+
+  // Format time since last simulation
+  const getTimeSinceLastSimulation = () => {
+    if (!lastSimulationTime) return null
+    const seconds = Math.floor((Date.now() - lastSimulationTime.getTime()) / 1000)
+    if (seconds < 60) return `${seconds}s ago`
+    const minutes = Math.floor(seconds / 60)
+    return `${minutes}m ago`
   }
 
   return (
@@ -91,10 +199,15 @@ export function AgentStatus() {
                 >
                   {isActive ? "Active" : "Paused"}
                 </Badge>
+                {isActive && isRunningSimulation && (
+                  <Badge className="bg-blue-500/10 text-blue-500 text-xs animate-pulse">
+                    Running...
+                  </Badge>
+                )}
               </div>
               <p className="text-sm text-muted-foreground">
                 {isActive
-                  ? "Running simulations and finding matches..."
+                  ? `Running simulations automatically${lastSimulationTime ? ` • Last: ${getTimeSinceLastSimulation()}` : ''}`
                   : "Agent is paused. Resume to continue networking."}
               </p>
             </div>
@@ -123,16 +236,6 @@ export function AgentStatus() {
                   Run All Simulations
                 </>
               )}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              className="flex-1 sm:flex-none gap-2 bg-secondary/50 hover:bg-secondary border-border/50 text-foreground hover:text-foreground"
-            >
-              <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />
-              Refresh
             </Button>
             <Button
               variant="outline"
