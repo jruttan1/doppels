@@ -22,14 +22,18 @@ import {
   X,
   Search,
 } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
 import { createClient } from "@/lib/supabase/client"
 import { ConnectionsSimulationsSidebar } from "./connections-simulations-sidebar"
 
 // Navigation removed - everything is on one page now
 const navItems: { href: string; label: string; icon: any }[] = []
+
+interface UserData {
+  name: string | null
+  email: string | null
+}
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -37,13 +41,59 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [desktopMenuOpen, setDesktopMenuOpen] = useState(false)
+  const [userData, setUserData] = useState<UserData>({ name: null, email: null })
+
+  const supabase = createClient()
+
+  const fetchUserData = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) return
+
+      // Get user profile from users table
+      const { data: profile } = await supabase
+        .from("users")
+        .select("name, email")
+        .eq("id", user.id)
+        .single()
+
+      setUserData({
+        name: profile?.name || null,
+        email: profile?.email || user.email || null,
+      })
+    } catch (error) {
+      console.error("Error fetching user data:", error)
+    }
+  }, [supabase])
+
+  useEffect(() => {
+    fetchUserData()
+  }, [fetchUserData])
 
   const handleLogout = async () => {
-    const supabase = createClient()
     await supabase.auth.signOut()
     router.push("/auth/login")
     router.refresh()
   }
+
+  const getInitials = (name: string | null, email: string | null) => {
+    if (name) {
+      return name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    }
+    if (email) {
+      return email.substring(0, 2).toUpperCase()
+    }
+    return "?"
+  }
+
+  const displayName = userData.name || "Set up your profile"
+  const displayEmail = userData.email || ""
 
   return (
     <div className="min-h-screen bg-background">
@@ -89,17 +139,21 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               <DropdownMenuTrigger asChild>
                 <button className="w-full lg:w-auto flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-secondary transition-colors">
                   <Avatar className="w-8 h-8">
-                    <AvatarImage src="/diverse-avatars.png" />
-                    <AvatarFallback>JD</AvatarFallback>
+                    <AvatarFallback>{getInitials(userData.name, userData.email)}</AvatarFallback>
                   </Avatar>
-                  <div className="flex-1 lg:hidden text-left">
-                    <p className="text-sm font-medium">Your Name</p>
-                    <p className="text-xs text-muted-foreground">name@example.com</p>
+                  <div className="flex-1 lg:hidden text-left min-w-0">
+                    <p className="text-sm font-medium truncate">{displayName}</p>
+                    <p className="text-xs text-muted-foreground truncate">{displayEmail}</p>
                   </div>
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">{displayName}</p>
+                    <p className="text-xs leading-none text-muted-foreground">{displayEmail}</p>
+                  </div>
+                </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link href="/dashboard/settings?tab=profile" onClick={() => setUserMenuOpen(false)}>
@@ -150,13 +204,17 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                   <Avatar className="w-8 h-8">
-                    <AvatarImage src="/diverse-avatars.png" />
-                    <AvatarFallback>JD</AvatarFallback>
+                    <AvatarFallback>{getInitials(userData.name, userData.email)}</AvatarFallback>
                   </Avatar>
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">{displayName}</p>
+                    <p className="text-xs leading-none text-muted-foreground">{displayEmail}</p>
+                  </div>
+                </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link href="/dashboard/settings?tab=profile" onClick={() => setDesktopMenuOpen(false)}>
