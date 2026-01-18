@@ -23,7 +23,6 @@ import {
   Upload, 
   MapPin, 
   Plus,
-  Bell,
   Shield,
   Briefcase,
   Loader2,
@@ -31,6 +30,7 @@ import {
   Calendar
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { cn } from "@/lib/utils"
 
 interface UserProfile {
   id: string
@@ -77,8 +77,15 @@ export function SettingsView() {
   const [agentActive, setAgentActive] = useState(true)
   const [selectiveConnect, setSelectiveConnect] = useState(false)
   const [vibeCheck, setVibeCheck] = useState("")
+  const [promptResponses, setPromptResponses] = useState<string[]>(["", "", ""])
   const [networkingGoals, setNetworkingGoals] = useState<string[]>([])
   const [goalInput, setGoalInput] = useState("")
+  
+  // Documents
+  const [resumeFiles, setResumeFiles] = useState<File[]>([])
+  const [linkedinFiles, setLinkedinFiles] = useState<File[]>([])
+  const [isDraggingResume, setIsDraggingResume] = useState(false)
+  const [isDraggingLinkedin, setIsDraggingLinkedin] = useState(false)
   
   // Skills
   const [skills, setSkills] = useState<string[]>([])
@@ -115,19 +122,25 @@ export function SettingsView() {
         .eq("id", user.id)
         .single()
 
-      if (error && error.code !== "PGRST116") {
-        console.error("Error fetching profile:", error)
+      if (error) {
+        if (error.code !== "PGRST116") {
+          console.error("Error fetching profile:", error)
+        }
+        // If user doesn't exist yet, that's okay - they'll start with empty fields
       }
 
       if (profile) {
+        // Basic profile info
         setName(profile.name || "")
         setHeadline(profile.tagline || "")
         setLocation(profile.location || "")
-        setLinkedinUrl(profile.linkedin_url || "")
+        if (profile.email) setEmail(profile.email)
+        
+        // Social links - check both direct columns and persona
+        setLinkedinUrl(profile.linkedin_url || profile.persona?.linkedin_url || "")
         setXUrl(profile.x_url || "")
         setGithubUrl(profile.github_url || "")
         setGoogleCalendarUrl(profile.google_calendar_url || "")
-        if (profile.email) setEmail(profile.email)
         
         // Helper to parse array fields (handle both array and JSON string formats)
         const parseArrayField = (field: any): string[] => {
@@ -138,35 +151,75 @@ export function SettingsView() {
               const parsed = JSON.parse(field)
               return Array.isArray(parsed) ? parsed : []
             } catch {
+              // If it's a comma-separated string, split it
+              if (field.includes(',')) {
+                return field.split(',').map(s => s.trim()).filter(Boolean)
+              }
               return []
             }
           }
           return []
         }
         
-        // Load networking_goals from dedicated column (text[] in Postgres)
-        setNetworkingGoals(parseArrayField(profile.networking_goals))
+        // Load networking_goals - check column first, then persona
+        const goalsFromDb = parseArrayField(profile.networking_goals)
+        const goalsFromPersona = parseArrayField(profile.persona?.networking_goals)
+        if (goalsFromDb.length > 0) {
+          setNetworkingGoals(goalsFromDb)
+        } else if (goalsFromPersona.length > 0) {
+          setNetworkingGoals(goalsFromPersona)
+        }
         
-        // Load skills from column, fallback to persona.skills_possessed
+        // Load skills - check column first, then persona.skills_possessed, then persona.skills
         const skillsFromDb = parseArrayField(profile.skills)
+        const skillsFromPersona = parseArrayField(profile.persona?.skills_possessed || profile.persona?.skills)
         if (skillsFromDb.length > 0) {
           setSkills(skillsFromDb)
-        } else if (profile.persona?.skills_possessed && Array.isArray(profile.persona.skills_possessed)) {
-          setSkills(profile.persona.skills_possessed)
+        } else if (skillsFromPersona.length > 0) {
+          setSkills(skillsFromPersona)
         }
         
-        // Load hiring preferences
-        setSkillsDesired(parseArrayField(profile.skills_desired))
-        setLocationDesired(parseArrayField(profile.location_desired))
+        // Load hiring preferences - check column first
+        const skillsDesiredFromDb = parseArrayField(profile.skills_desired)
+        const skillsDesiredFromPersona = parseArrayField(profile.persona?.skills_desired)
+        if (skillsDesiredFromDb.length > 0) {
+          setSkillsDesired(skillsDesiredFromDb)
+        } else if (skillsDesiredFromPersona.length > 0) {
+          setSkillsDesired(skillsDesiredFromPersona)
+        }
+        
+        const locationDesiredFromDb = parseArrayField(profile.location_desired)
+        const locationDesiredFromPersona = parseArrayField(profile.persona?.location_desired || profile.persona?.filters?.locations)
+        if (locationDesiredFromDb.length > 0) {
+          setLocationDesired(locationDesiredFromDb)
+        } else if (locationDesiredFromPersona.length > 0) {
+          setLocationDesired(locationDesiredFromPersona)
+        }
         
         // Load voice signature - check column first, then persona
+        let voiceSignature = ""
         if (profile.voice_signature) {
-          setVibeCheck(profile.voice_signature)
+          voiceSignature = profile.voice_signature
         } else if (profile.persona?.raw_assets?.voice_snippet) {
-          setVibeCheck(profile.persona.raw_assets.voice_snippet)
+          voiceSignature = profile.persona.raw_assets.voice_snippet
+        } else if (profile.persona?.voice_signature) {
+          voiceSignature = profile.persona.voice_signature
+        }
+        setVibeCheck(voiceSignature)
+        // Parse into 3 prompts (split by "\n\n---\n\n")
+        if (voiceSignature) {
+          const prompts = voiceSignature.split("\n\n---\n\n")
+          setPromptResponses([
+            prompts[0] || "",
+            prompts[1] || "",
+            prompts[2] || ""
+          ])
+        } else {
+          // Initialize empty prompts if no data
+          setPromptResponses(["", "", ""])
         }
         
-        // Load agent settings from persona
+        // Load agent settings from persona (with defaults)
         if (profile.persona) {
           setAgentActive(profile.persona.agent_active ?? true)
           setSelectiveConnect(profile.persona.selective_connect ?? false)
@@ -176,7 +229,16 @@ export function SettingsView() {
             setMatchAlerts(profile.persona.notifications.match_alerts ?? true)
             setWeeklyDigest(profile.persona.notifications.weekly_digest ?? false)
           }
+        } else {
+          // Set defaults if no persona exists
+          setAgentActive(true)
+          setSelectiveConnect(false)
         }
+      } else {
+        // No profile found - set defaults
+        setAgentActive(true)
+        setSelectiveConnect(false)
+        setPromptResponses(["", "", ""])
       }
     } catch (error) {
       console.error("Error:", error)
@@ -223,7 +285,7 @@ export function SettingsView() {
           github_url: githubUrl,
           google_calendar_url: googleCalendarUrl,
           networking_goals: networkingGoals,
-          voice_signature: vibeCheck,
+          voice_signature: promptResponses.join("\n\n---\n\n"),
           skills: skills,
           skills_desired: skillsDesired,
           location_desired: locationDesired,
@@ -241,12 +303,16 @@ export function SettingsView() {
 
       if (error) {
         console.error("Error saving profile:", error)
+        alert("Failed to save settings. Please try again.")
       } else {
         setSaved(true)
         setTimeout(() => setSaved(false), 2000)
+        // Refresh profile data to ensure UI is in sync
+        await fetchProfile()
       }
     } catch (error) {
       console.error("Error:", error)
+      alert("An error occurred while saving. Please try again.")
     } finally {
       setSaving(false)
     }
@@ -294,6 +360,69 @@ export function SettingsView() {
 
   const removeLocationDesired = (loc: string) => {
     setLocationDesired((prev) => prev.filter((l) => l !== loc))
+  }
+
+  // Voice signature prompts (matching onboarding)
+  const VIBE_CHECK_PROMPTS = [
+    "Write a message to a potential co-founder you've never met.",
+    "Describe your perfect weekend side project.",
+    "How would you explain your work to a smart 10-year-old?",
+  ]
+
+  const handlePromptChange = (index: number, value: string) => {
+    const newResponses = [...promptResponses]
+    newResponses[index] = value
+    setPromptResponses(newResponses)
+    // Also update combined vibeCheck for backward compatibility
+    setVibeCheck(newResponses.join("\n\n---\n\n"))
+  }
+
+  // Document upload handlers
+  const handleDragOver = (e: React.DragEvent, type: "resume" | "linkedin") => {
+    e.preventDefault()
+    if (type === "resume") setIsDraggingResume(true)
+    else setIsDraggingLinkedin(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent, type: "resume" | "linkedin") => {
+    e.preventDefault()
+    if (type === "resume") setIsDraggingResume(false)
+    else setIsDraggingLinkedin(false)
+  }
+
+  const handleDrop = (e: React.DragEvent, type: "resume" | "linkedin") => {
+    e.preventDefault()
+    if (type === "resume") setIsDraggingResume(false)
+    else setIsDraggingLinkedin(false)
+    
+    const files = Array.from(e.dataTransfer.files).filter(
+      (file) => file.type === "application/pdf" || file.type.includes("document"),
+    )
+    
+    if (type === "resume") {
+      setResumeFiles((prev) => [...prev, ...files])
+    } else {
+      setLinkedinFiles((prev) => [...prev, ...files])
+    }
+  }
+
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>, type: "resume" | "linkedin") => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files)
+      if (type === "resume") {
+        setResumeFiles((prev) => [...prev, ...files])
+      } else {
+        setLinkedinFiles((prev) => [...prev, ...files])
+      }
+    }
+  }
+
+  const removeFile = (index: number, type: "resume" | "linkedin") => {
+    if (type === "resume") {
+      setResumeFiles((prev) => prev.filter((_, i) => i !== index))
+    } else {
+      setLinkedinFiles((prev) => prev.filter((_, i) => i !== index))
+    }
   }
 
   const getInitials = (name: string) => {
@@ -352,10 +481,6 @@ export function SettingsView() {
         <TabsTrigger value="goals" className="gap-2">
           <Target className="w-4 h-4" />
           Goals
-        </TabsTrigger>
-        <TabsTrigger value="notifications" className="gap-2">
-          <Bell className="w-4 h-4" />
-          Notifications
         </TabsTrigger>
       </TabsList>
 
@@ -722,40 +847,148 @@ export function SettingsView() {
 
             <Separator />
 
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div className="flex items-center gap-2">
                 <MessageSquare className="w-4 h-4 text-primary" />
                 <Label className="text-base font-medium">Voice Signature</Label>
               </div>
               <p className="text-sm text-muted-foreground">
-                Write naturally so your Doppel can learn your communication style.
+                Write naturally so your Doppel sounds like you.
               </p>
-              <Textarea
-                placeholder="Write a few paragraphs about anything - your work, hobbies, opinions. We'll analyze your tone, word choice, and style so your Doppel sounds like you."
-                value={vibeCheck}
-                onChange={(e) => setVibeCheck(e.target.value)}
-                className="min-h-[200px] bg-secondary/50 resize-none"
-              />
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>{vibeCheck.length} characters</span>
-                <span>{vibeCheck.length >= 200 ? "Great sample!" : `${200 - vibeCheck.length} more characters recommended`}</span>
+              
+              {VIBE_CHECK_PROMPTS.map((prompt, index) => (
+                <div key={index} className="space-y-2">
+                  <p className="text-sm text-muted-foreground">{prompt}</p>
+                  <Textarea
+                    placeholder="Start typing how you'd actually write..."
+                    value={promptResponses[index] || ""}
+                    onChange={(e) => handlePromptChange(index, e.target.value)}
+                    className="min-h-[160px] bg-secondary/50 resize-none"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>{promptResponses[index]?.length || 0} characters</span>
+                    <span>
+                      {(promptResponses[index]?.length || 0) >= 100
+                        ? "✓ Good"
+                        : `${100 - (promptResponses[index]?.length || 0)} more`}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              
+              <div className="rounded-lg bg-secondary/30 border border-border p-4">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">Total characters</span>
+                  <span className="font-mono">
+                    {promptResponses.reduce((sum, r) => sum + (r?.length || 0), 0)}
+                  </span>
+                </div>
               </div>
             </div>
 
             <Separator />
 
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div className="flex items-center gap-2">
                 <FileText className="w-4 h-4 text-primary" />
                 <Label className="text-base font-medium">Documents</Label>
               </div>
               <p className="text-sm text-muted-foreground">
-                Upload your resume or other documents to help your Doppel understand your background.
+                Add your resume and profiles for better matches.
               </p>
-              <Button variant="outline" className="gap-2 bg-transparent">
-                <Upload className="w-4 h-4" />
-                Upload Documents
-              </Button>
+              
+              {/* Resume Upload */}
+              <div className="space-y-3">
+                <Label className="text-sm">Resume / Documents</Label>
+                <div
+                  onDragOver={(e) => handleDragOver(e, "resume")}
+                  onDragLeave={(e) => handleDragLeave(e, "resume")}
+                  onDrop={(e) => handleDrop(e, "resume")}
+                  onClick={() => document.getElementById("resume-input")?.click()}
+                  className={cn(
+                    "border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors",
+                    isDraggingResume ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
+                  )}
+                >
+                  <input
+                    id="resume-input"
+                    type="file"
+                    accept=".pdf,.doc,.docx"
+                    className="hidden"
+                    onChange={(e) => handleFileInput(e, "resume")}
+                    multiple
+                  />
+                  <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">
+                    Drag and drop your resume here, or click to browse
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">PDF, DOC, or DOCX up to 10MB</p>
+                </div>
+                {resumeFiles.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {resumeFiles.map((file, index) => (
+                      <div key={index} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary border border-border text-sm">
+                        <FileText className="w-4 h-4" />
+                        <span className="truncate max-w-[200px]">{file.name}</span>
+                        <button
+                          onClick={() => removeFile(index, "resume")}
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* LinkedIn PDF Upload */}
+              <div className="space-y-3">
+                <Label className="text-sm flex items-center gap-2">
+                  <Linkedin className="w-4 h-4" />
+                  LinkedIn Profile (PDF)
+                </Label>
+                <div
+                  onDragOver={(e) => handleDragOver(e, "linkedin")}
+                  onDragLeave={(e) => handleDragLeave(e, "linkedin")}
+                  onDrop={(e) => handleDrop(e, "linkedin")}
+                  onClick={() => document.getElementById("linkedin-input")?.click()}
+                  className={cn(
+                    "border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors",
+                    isDraggingLinkedin ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
+                  )}
+                >
+                  <input
+                    id="linkedin-input"
+                    type="file"
+                    accept=".pdf"
+                    className="hidden"
+                    onChange={(e) => handleFileInput(e, "linkedin")}
+                    multiple
+                  />
+                  <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">
+                    Drag and drop your LinkedIn PDF here, or click to browse
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">PDF up to 10MB</p>
+                </div>
+                {linkedinFiles.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {linkedinFiles.map((file, index) => (
+                      <div key={index} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary border border-border text-sm">
+                        <FileText className="w-4 h-4" />
+                        <span className="truncate max-w-[200px]">{file.name}</span>
+                        <button
+                          onClick={() => removeFile(index, "linkedin")}
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2">
@@ -806,23 +1039,74 @@ export function SettingsView() {
             <CardDescription>What are you looking to achieve? Be specific so your Doppel can find the right connections.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Input
-                placeholder="e.g., Find a technical co-founder who has deep experience with Rust and distributed systems"
+            {/* Instructions */}
+            <div className="rounded-lg bg-secondary/30 border border-border p-4">
+              <p className="text-sm text-muted-foreground">
+                Be specific about who you want to meet. The more detail, the better we can match you.
+              </p>
+              <p className="text-xs text-muted-foreground mt-2">
+                Examples: "A technical co-founder with backend experience in fintech" or "Angel investors focused on AI/ML startups"
+              </p>
+            </div>
+
+            {/* Goals list */}
+            {networkingGoals.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Your goals</span>
+                  <span className="text-xs text-muted-foreground">{networkingGoals.length} added</span>
+                </div>
+                <div className="space-y-2">
+                  {networkingGoals.map((goal, index) => (
+                    <div 
+                      key={index} 
+                      className="flex items-start gap-3 p-4 rounded-lg bg-secondary/30 border border-border"
+                    >
+                      <span className="text-muted-foreground text-sm font-mono">{index + 1}.</span>
+                      <p className="flex-1 text-sm">{goal}</p>
+                      <button
+                        onClick={() => removeGoal(index)}
+                        className="p-1 text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Input */}
+            <div className="space-y-3">
+              <Textarea
+                placeholder="Describe a networking goal..."
                 value={goalInput}
                 onChange={(e) => setGoalInput(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") {
+                  if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault()
                     addGoal()
                   }
                 }}
-                className="bg-secondary/50"
+                rows={3}
+                className="bg-secondary/50 resize-none"
               />
-              <Button onClick={addGoal} variant="outline" size="sm" className="gap-2 bg-transparent">
-                <Plus className="w-4 h-4" />
-                Add Goal
-              </Button>
+              
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">
+                  Add more goals if you'd like
+                </span>
+                <Button
+                  onClick={addGoal}
+                  disabled={!goalInput.trim()}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Goal
+                </Button>
+              </div>
             </div>
             {networkingGoals.length > 0 ? (
               <div className="space-y-2">
@@ -862,56 +1146,6 @@ export function SettingsView() {
         </Card>
       </TabsContent>
 
-      {/* Notifications Tab */}
-      <TabsContent value="notifications" className="space-y-6">
-        <Card className="bg-card border-border shadow-md">
-          <CardHeader>
-            <CardTitle>Notifications</CardTitle>
-            <CardDescription>Choose how you want to be notified about activity.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/30 border border-border">
-              <div className="space-y-1">
-                <Label className="text-base font-medium">Email Notifications</Label>
-                <p className="text-sm text-muted-foreground">Receive updates via email</p>
-              </div>
-              <Switch checked={emailNotifications} onCheckedChange={setEmailNotifications} />
-            </div>
-
-            <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/30 border border-border">
-              <div className="space-y-1">
-                <Label className="text-base font-medium">Match Alerts</Label>
-                <p className="text-sm text-muted-foreground">Get notified when your Doppel finds a great match</p>
-              </div>
-              <Switch checked={matchAlerts} onCheckedChange={setMatchAlerts} />
-            </div>
-
-            <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/30 border border-border">
-              <div className="space-y-1">
-                <Label className="text-base font-medium">Weekly Digest</Label>
-                <p className="text-sm text-muted-foreground">Receive a weekly summary of your networking activity</p>
-              </div>
-              <Switch checked={weeklyDigest} onCheckedChange={setWeeklyDigest} />
-            </div>
-
-            <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2">
-              {saving ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Saving...
-                </>
-              ) : saved ? (
-                <>
-                  <CheckCircle2 className="w-4 h-4" />
-                  Saved!
-                </>
-              ) : (
-                "Save Notification Settings"
-              )}
-            </Button>
-          </CardContent>
-        </Card>
-      </TabsContent>
     </Tabs>
   )
 }
