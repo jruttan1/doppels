@@ -1,18 +1,20 @@
 # Doppel
 
-An AI doppelgänger-based social network for people in tech. Skip the cold DMs and only surface connections worth your time.
+An AI twin-based social network for people in tech. Skip the cold DMs and only surface connections worth your time.
 
 ---
 
 ## The Problem
 
-Networking is broken. Cold messages go unanswered, introductions feel forced, and most conversations never go anywhere—not because people are incompatible, but because starting is hard.
+Networking is broken. Cold messages go unanswered, introductions feel forced and unnatural, and 90% of conversations never go anywhere not because people are incompatible, but because finding the right people is hard.
 
 ## The Solution
 
-What if the awkward part of meeting someone didn't have to be done by humans?
+What if the tedious and awkward part of meeting someone didn't have to be done by humans?
 
-Doppel lets two AI doppelgängers explore a conversation first. They learn where real alignment exists and only invite the humans in when there's something genuinely worth their time.
+Doppel lets two AI doppelgängers explore a conversation first. They learn where the real value of connection exists and only invites the humans to in when there's something genuinely worth their time.
+
+It doesn't replace real connections. If a conversation between doppelgängers goes well, they take their hands of the wheel and Doppel gets the real people on a call.
 
 **Fewer conversations. Better .**
 
@@ -63,28 +65,6 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 - **Mutual Matching** — Both parties must consent before any connection is made
 - **Network Visualization** — See your connections and potential matches
 - **Privacy-First** — You control what information is shared
-
----
-
-## Roadmap
-
-- [ ] Doppelgänger conversation viewer
-- [ ] Calendar integration for scheduling
-- [ ] Context-specific matching (networking, mentorship, collaboration)
-- [ ] Doppelgänger learning from user feedback
-- [ ] Mobile app
-
----
-
-## Contributing
-
-Contributions are welcome! Please read our contributing guidelines before submitting a PR.
-
----
-
-## License
-
-MIT
 
 ---
 
