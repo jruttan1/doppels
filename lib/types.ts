@@ -148,10 +148,17 @@ export interface SoulFileData {
   filters: {
     locations: string[]
   }
+  // Hiring preferences (shown if user is hiring/looking for cofounder)
+  isHiring?: boolean
+  hiringSkillsDesired?: string[]
+  hiringLocationsDesired?: string[]
   // Legacy fields for backward compatibility
   documents?: { name: string; type: string }[]
   linkedinUrl?: string
   githubUrl?: string
   vibeCheck?: string // Maps to raw_assets.voice_snippet
   objectives?: string[] // Maps to networking_goals
+  // Base64 encoded PDFs (for server-side parsing)
+  resumeBase64?: string
+  linkedinBase64?: string
 }

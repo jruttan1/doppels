@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react"
+import { Loader2, AlertCircle, MapPin } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
 export function SignupForm() {
@@ -17,8 +17,8 @@ export function SignupForm() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [fullName, setFullName] = useState("")
+  const [location, setLocation] = useState("")
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -28,13 +28,14 @@ export function SignupForm() {
 
     const supabase = createClient()
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/auth/callback`,
         data: {
           full_name: fullName,
+          location: location,
         },
       },
     })
@@ -45,26 +46,18 @@ export function SignupForm() {
       return
     }
 
-    setSuccess(true)
-    setIsLoading(false)
-  }
+    // Save name/location to users table
+    if (data.user) {
+      await supabase.from('users').upsert({
+        id: data.user.id,
+        email: email,
+        name: fullName,
+        location: location,
+      })
+    }
 
-  if (success) {
-    return (
-      <div className="text-center space-y-4">
-        <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mx-auto">
-          <CheckCircle2 className="w-8 h-8 text-green-500" />
-        </div>
-        <h2 className="text-xl font-semibold">Check your email</h2>
-        <p className="text-muted-foreground">
-          We&apos;ve sent you a confirmation link to <span className="font-medium text-foreground">{email}</span>. Click
-          the link to activate your account and start creating your Doppel.
-        </p>
-        <Button variant="outline" onClick={() => router.push("/auth/login")} className="mt-4 bg-transparent">
-          Back to Sign In
-        </Button>
-      </div>
-    )
+    router.push("/onboarding")
+    router.refresh()
   }
 
   return (
@@ -112,6 +105,21 @@ export function SignupForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            className="bg-input border-border"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="location" className="flex items-center gap-1.5">
+            <MapPin className="w-3.5 h-3.5" />
+            Location
+          </Label>
+          <Input
+            id="location"
+            type="text"
+            placeholder="San Francisco, CA"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
             className="bg-input border-border"
           />
         </div>

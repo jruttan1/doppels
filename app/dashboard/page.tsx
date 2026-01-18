@@ -9,7 +9,8 @@ export const metadata = {
   description: "Your agent networking dashboard",
 }
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+
   return (
     <DashboardShell>
       <div className="space-y-6">

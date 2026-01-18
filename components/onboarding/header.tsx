@@ -1,6 +1,5 @@
 import Link from "next/link"
 import { cn } from "@/lib/utils"
-import { Check } from "lucide-react"
 
 interface OnboardingHeaderProps {
   currentStep: number
@@ -9,41 +8,51 @@ interface OnboardingHeaderProps {
 
 export function OnboardingHeader({ currentStep, steps }: OnboardingHeaderProps) {
   return (
-    <header className="border-b border-border">
+    <header className="border-b border-white/5">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <div className="flex items-center justify-between mb-6">
           <Link href="/" className="flex items-center gap-2">
-            <span className="text-xl font-bold font-mono">Doppel</span>
+            <span className="text-xl font-bold font-mono text-white">
+              Doppel
+            </span>
           </Link>
 
-          <p className="text-sm text-muted-foreground">Creating your Soul File</p>
+          <span className="text-xs text-white/30">
+            Step {currentStep + 1} of {steps.length}
+          </span>
         </div>
 
-        <div className="flex items-center justify-between relative">
-          <div className="absolute top-4 left-0 right-0 h-0.5 bg-border" />
+        {/* Minimal progress bar */}
+        <div className="relative">
+          <div className="h-0.5 bg-white/5 rounded-full" />
           <div
-            className="absolute top-4 left-0 h-0.5 bg-primary transition-all duration-500"
-            style={{ width: `${(currentStep / (steps.length - 1)) * 100}%` }}
+            className="absolute top-0 left-0 h-0.5 bg-white/50 rounded-full transition-all duration-500"
+            style={{ width: `${((currentStep + 1) / steps.length) * 100}%` }}
           />
+        </div>
 
+        {/* Step indicators */}
+        <div className="flex items-center justify-between mt-4">
           {steps.map((step, index) => (
-            <div key={step} className="relative flex flex-col items-center z-10">
+            <div key={step} className="flex flex-col items-center">
               <div
                 className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all",
+                  "w-2 h-2 rounded-full transition-all",
                   index < currentStep
-                    ? "bg-primary text-primary-foreground"
+                    ? "bg-white/50"
                     : index === currentStep
-                      ? "bg-primary text-primary-foreground ring-4 ring-primary/20"
-                      : "bg-secondary text-muted-foreground",
+                      ? "bg-white ring-4 ring-white/10"
+                      : "bg-white/10",
                 )}
-              >
-                {index < currentStep ? <Check className="w-4 h-4" /> : index + 1}
-              </div>
+              />
               <span
                 className={cn(
-                  "absolute top-10 text-xs whitespace-nowrap transition-colors",
-                  index <= currentStep ? "text-foreground" : "text-muted-foreground",
+                  "mt-2 text-xs transition-colors",
+                  index === currentStep 
+                    ? "text-white/80" 
+                    : index < currentStep 
+                      ? "text-white/40" 
+                      : "text-white/20",
                 )}
               >
                 {step}
