@@ -48,13 +48,21 @@ export async function POST(req: Request) {
 
     console.log(`Auto-connecting ${userId} with ${allUsers.length} users...`);
 
-    // 3. CHECK EXISTING SIMULATIONS TO AVOID DUPLICATES
-    const { data: existingSims } = await supabase
+    // 3. CHECK EXISTING SIMULATIONS TO AVOID DUPLICATES (check both directions)
+    const { data: existingSims1 } = await supabase
       .from('simulations')
       .select('participant2')
       .eq('participant1', userId);
 
-    const existingPartnerIds = new Set(existingSims?.map(s => s.participant2) || []);
+    const { data: existingSims2 } = await supabase
+      .from('simulations')
+      .select('participant1')
+      .eq('participant2', userId);
+
+    const existingPartnerIds = new Set([
+      ...(existingSims1?.map(s => s.participant2) || []),
+      ...(existingSims2?.map(s => s.participant1) || [])
+    ]);
     const usersToSimulate = allUsers.filter(u => !existingPartnerIds.has(u.id));
 
     if (usersToSimulate.length === 0) {

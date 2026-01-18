@@ -1,5 +1,6 @@
 -- Function to get an instant match for a user
 -- Returns a random eligible user with their persona data
+-- Excludes users who already have a simulation with the current user
 
 CREATE OR REPLACE FUNCTION get_instant_match(my_id UUID)
 RETURNS TABLE (
@@ -29,6 +30,12 @@ BEGIN
     AND u.persona IS NOT NULL
     AND u.persona != '{}'::jsonb
     AND u.ingestion_status = 'complete'
+    -- Exclude users who already have a simulation (in either direction)
+    AND NOT EXISTS (
+      SELECT 1 FROM simulations s 
+      WHERE (s.participant1 = my_id AND s.participant2 = u.id)
+         OR (s.participant1 = u.id AND s.participant2 = my_id)
+    )
   ORDER BY RANDOM()
   LIMIT 1;
 END;

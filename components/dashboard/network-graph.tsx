@@ -12,6 +12,7 @@ import { ZoomIn, ZoomOut, Search, Sparkles, Calendar, MessageSquare } from "luci
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress"
 import { createClient } from "@/lib/supabase/client"
+import { toast } from "sonner"
 
 interface NetworkNode {
   id: string
@@ -26,6 +27,7 @@ interface NetworkNode {
   compatibility?: number
   avatar?: string
   skills: string[]
+  simulationId?: string
 }
 
 export function NetworkGraph() {
@@ -43,7 +45,53 @@ export function NetworkGraph() {
   const [filter, setFilter] = useState<"all" | "matched" | "simulated" | "unexplored">("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [sendingCoffeeChat, setSendingCoffeeChat] = useState(false)
+  const [coffeeChatSent, setCoffeeChatSent] = useState<string | null>(null)
   const supabase = createClient()
+
+  const handleBookCoffeeChat = async (simulationId: string) => {
+    setSendingCoffeeChat(true)
+    setCoffeeChatSent(null)
+    
+    // Show toast after 1.5 seconds
+    setTimeout(() => {
+      toast.success("Email sent!", {
+        description: "Coffee chat invitation has been sent.",
+        duration: 3000,
+      })
+    }, 1500)
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        console.error("No user found")
+        return
+      }
+
+      const response = await fetch('/api/send-coffee-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          simulationId,
+          senderId: user.id
+        })
+      })
+
+      const result = await response.json()
+      
+      if (response.ok) {
+        setCoffeeChatSent(result.message || "Invitation sent!")
+      } else {
+        console.error("Failed to send:", result.error)
+        setCoffeeChatSent("Failed to send invitation")
+      }
+    } catch (error) {
+      console.error("Error sending coffee chat:", error)
+      setCoffeeChatSent("Failed to send invitation")
+    } finally {
+      setSendingCoffeeChat(false)
+    }
+  }
 
   // Get current user ID
   useEffect(() => {
@@ -98,19 +146,21 @@ export function NetworkGraph() {
         // Fetch simulations for current user to determine status
         const { data: simulations, error: simError } = await supabase
           .from('simulations')
-          .select('participant2, score')
+          .select('id, participant2, score')
           .eq('participant1', user.id)
 
         if (simError) {
           console.error("Error fetching simulations:", simError)
         }
 
-        // Create a map of user_id -> best score
+        // Create maps of user_id -> best score and simulation id
         const userScores = new Map<string, number>()
+        const userSimulationIds = new Map<string, string>()
         simulations?.forEach((sim) => {
           const existing = userScores.get(sim.participant2)
           if (!existing || (sim.score && sim.score > existing)) {
             userScores.set(sim.participant2, sim.score || 0)
+            userSimulationIds.set(sim.participant2, sim.id)
           }
         })
 
@@ -144,6 +194,7 @@ export function NetworkGraph() {
             compatibility: score,
             avatar: undefined,
             skills: Array.isArray(skills) ? skills : [],
+            simulationId: userSimulationIds.get(u.id),
           }
         })
 
@@ -840,7 +891,7 @@ export function NetworkGraph() {
       </Card>
 
       {/* Node detail dialog */}
-      <Dialog open={!!selectedNode} onOpenChange={() => setSelectedNode(null)}>
+      <Dialog open={!!selectedNode} onOpenChange={() => { setSelectedNode(null); setCoffeeChatSent(null); }}>
         <DialogContent className="max-w-lg bg-card border-border shadow-lg rounded-[4px] h-full w-full max-h-full sm:h-auto sm:max-h-[90vh] sm:w-auto sm:max-w-lg flex flex-col p-0 sm:p-6 fixed inset-0 sm:inset-auto sm:top-[50%] sm:left-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] rounded-none sm:rounded-[4px]">
           {selectedNode && (
             <>
@@ -926,15 +977,26 @@ export function NetworkGraph() {
                   )}
 
                   {selectedNode.id !== currentUserId && (
-                    <div className="flex flex-col sm:flex-row gap-3 pt-2 pb-4 sm:pb-0">
-                      <Button className="flex-1 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground">
-                        <Calendar className="w-4 h-4" />
-                        Book Coffee Chat
-                      </Button>
-                      <Button variant="outline" className="flex-1 gap-2 bg-transparent">
-                        <MessageSquare className="w-4 h-4" />
-                        View Simulation
-                      </Button>
+                    <div className="space-y-3 pt-2 pb-4 sm:pb-0">
+                      {coffeeChatSent && (
+                        <div className={`p-3 rounded-lg text-sm ${coffeeChatSent.includes("Failed") ? "bg-red-500/10 text-red-500" : "bg-green-500/10 text-green-500"}`}>
+                          {coffeeChatSent}
+                        </div>
+                      )}
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <Button 
+                          className="flex-1 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
+                          onClick={() => selectedNode.simulationId && handleBookCoffeeChat(selectedNode.simulationId)}
+                          disabled={sendingCoffeeChat || coffeeChatSent?.includes("sent") || !selectedNode.simulationId}
+                        >
+                          <Calendar className="w-4 h-4" />
+                          {sendingCoffeeChat ? "Sending..." : coffeeChatSent?.includes("sent") ? "Invitation Sent!" : "Book Coffee Chat"}
+                        </Button>
+                        <Button variant="outline" className="flex-1 gap-2 bg-transparent">
+                          <MessageSquare className="w-4 h-4" />
+                          View Simulation
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </div>

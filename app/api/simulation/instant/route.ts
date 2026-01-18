@@ -76,6 +76,22 @@ export async function POST(req: Request) {
 
     const partner = partners[0]; // The SQL query returned the best random match
 
+    // 2.5 CHECK IF SIMULATION ALREADY EXISTS (enforce one conversation per pair)
+    const { data: existingSim } = await supabaseClient
+      .from('simulations')
+      .select('id, score')
+      .or(`and(participant1.eq.${userId},participant2.eq.${partner.other_id}),and(participant1.eq.${partner.other_id},participant2.eq.${userId})`)
+      .limit(1)
+      .maybeSingle();
+
+    if (existingSim) {
+      return Response.json({ 
+        message: "Simulation already exists between these users",
+        existingSimulation: existingSim,
+        score: existingSim.score
+      });
+    }
+
     // 3. SETUP AGENTS
     const myPersona = {
       id: me.id,

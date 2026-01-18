@@ -8,9 +8,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { ChevronRight, Sparkles, MessageSquare, CheckCircle2, XCircle, Clock, ArrowRight, Calendar } from "lucide-react"
 import { ConnectionDetailModal } from "./connection-detail-modal"
-import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
+import { toast } from "sonner"
 
 interface ConnectionPreview {
   id: string
@@ -45,7 +46,53 @@ export function ConnectionsSimulationsSidebar() {
   const [connections, setConnections] = useState<ConnectionPreview[]>([])
   const [simulations, setSimulations] = useState<Simulation[]>([])
   const [currentUserName, setCurrentUserName] = useState<string>("You")
+  const [sendingCoffeeChat, setSendingCoffeeChat] = useState(false)
+  const [coffeeChatSent, setCoffeeChatSent] = useState<string | null>(null)
   const supabase = createClient()
+
+  const handleBookCoffeeChat = async (simulationId: string) => {
+    setSendingCoffeeChat(true)
+    setCoffeeChatSent(null)
+    
+    // Show toast after 1.5 seconds
+    setTimeout(() => {
+      toast.success("Email sent!", {
+        description: "Coffee chat invitation has been sent.",
+        duration: 3000,
+      })
+    }, 1500)
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        console.error("No user found")
+        return
+      }
+
+      const response = await fetch('/api/send-coffee-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          simulationId,
+          senderId: user.id
+        })
+      })
+
+      const result = await response.json()
+      
+      if (response.ok) {
+        setCoffeeChatSent(result.message || "Invitation sent!")
+      } else {
+        console.error("Failed to send:", result.error)
+        setCoffeeChatSent("Failed to send invitation")
+      }
+    } catch (error) {
+      console.error("Error sending coffee chat:", error)
+      setCoffeeChatSent("Failed to send invitation")
+    } finally {
+      setSendingCoffeeChat(false)
+    }
+  }
 
   useEffect(() => {
     const fetchData = async () => {
@@ -239,8 +286,14 @@ export function ConnectionsSimulationsSidebar() {
                 {matchedConnections.map((connection) => (
                   <button
                     key={connection.id}
+                    type="button"
                     className="w-full p-3 hover:bg-secondary/30 transition-colors text-left"
-                    onClick={() => setSelectedConnection(connection)}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      console.log("Connection clicked:", connection.id, connection.name)
+                      setSelectedConnection(connection)
+                    }}
                   >
                     <div className="flex items-start gap-2">
                       <div className="relative shrink-0">
@@ -309,8 +362,14 @@ export function ConnectionsSimulationsSidebar() {
                 {simulations.map((simulation) => (
                   <button
                     key={simulation.id}
+                    type="button"
                     className="w-full p-3 hover:bg-secondary/30 transition-colors text-left"
-                    onClick={() => setSelectedSimulation(simulation)}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      console.log("Simulation clicked:", simulation.id, simulation.targetName)
+                      setSelectedSimulation(simulation)
+                    }}
                   >
                     <div className="flex items-start gap-2">
                       <div className="relative shrink-0">
@@ -354,7 +413,7 @@ export function ConnectionsSimulationsSidebar() {
         connection={selectedConnection} 
         onClose={() => {
           setSelectedConnection(null)
-          setSelectedSimulation(null) // Clear simulation when closing connection modal
+          // Don't clear selectedSimulation here - we might be switching to view a simulation
         }}
         onViewSimulation={async (simId) => {
           // Clear any existing simulation first
@@ -437,18 +496,20 @@ export function ConnectionsSimulationsSidebar() {
       <Dialog 
         open={!!selectedSimulation} 
         onOpenChange={(open) => {
+          console.log("Simulation dialog onOpenChange:", open, selectedSimulation?.id)
           if (!open) {
             setSelectedSimulation(null)
           }
         }}
         key={selectedSimulation?.id} // Force re-render when simulation changes
       >
-        <DialogContent className="max-w-3xl bg-card border-border shadow-lg h-[95vh] w-full max-h-[95vh] sm:h-auto sm:max-h-[95vh] sm:w-auto sm:max-w-3xl flex flex-col p-0 fixed inset-0 sm:inset-auto sm:top-[50%] sm:left-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] rounded-none sm:rounded-[4px]">
-          {selectedSimulation && (
+        <DialogContent className="max-w-3xl bg-card border-border shadow-lg h-[95vh] w-[95vw] max-h-[95vh] sm:h-[85vh] sm:max-h-[85vh] sm:w-auto sm:max-w-3xl flex flex-col p-0 rounded-lg z-[100]">
+          {selectedSimulation ? (
             <>
               {/* Header */}
               <div className="px-6 pt-6 pb-4 border-b border-border">
                 <DialogHeader>
+                  <DialogTitle className="sr-only">Simulation Chat: {selectedSimulation.targetName}</DialogTitle>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-3">
@@ -500,8 +561,8 @@ export function ConnectionsSimulationsSidebar() {
               </div>
 
               {/* Chat Messages */}
-              <div className="flex-1 overflow-hidden flex flex-col min-h-0" style={{ minHeight: 0 }}>
-                <ScrollArea className="h-full px-6 py-4">
+              <div className="flex-1 overflow-hidden min-h-0">
+                <ScrollArea className="h-full w-full px-6 py-4">
                   <div className="space-y-6">
                   {selectedSimulation.messages.map((msg, i) => {
                     const isMyAgent = msg.agent === "A"
@@ -606,18 +667,33 @@ export function ConnectionsSimulationsSidebar() {
                 {selectedSimulation.status === "completed" &&
                   selectedSimulation.score &&
                   selectedSimulation.score >= 70 && (
-                    <div className="flex gap-3">
-                      <Button className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground">
-                        <Calendar className="w-4 h-4 mr-2" />
-                        Book Coffee Chat
-                      </Button>
-                      <Button variant="outline" className="flex-1 bg-transparent">
-                        Save for Later
-                      </Button>
+                    <div className="space-y-3">
+                      {coffeeChatSent && (
+                        <div className={`p-3 rounded-lg text-sm ${coffeeChatSent.includes("Failed") ? "bg-red-500/10 text-red-500" : "bg-green-500/10 text-green-500"}`}>
+                          {coffeeChatSent}
+                        </div>
+                      )}
+                      <div className="flex gap-3">
+                        <Button 
+                          className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground"
+                          onClick={() => handleBookCoffeeChat(selectedSimulation.id)}
+                          disabled={sendingCoffeeChat || coffeeChatSent?.includes("sent")}
+                        >
+                          <Calendar className="w-4 h-4 mr-2" />
+                          {sendingCoffeeChat ? "Sending..." : coffeeChatSent?.includes("sent") ? "Invitation Sent!" : "Book Coffee Chat"}
+                        </Button>
+                        <Button variant="outline" className="flex-1 bg-transparent">
+                          Save for Later
+                        </Button>
+                      </div>
                     </div>
                   )}
               </div>
             </>
+          ) : (
+            <div className="p-6 text-center text-muted-foreground">
+              <p>Loading simulation...</p>
+            </div>
           )}
         </DialogContent>
       </Dialog>
