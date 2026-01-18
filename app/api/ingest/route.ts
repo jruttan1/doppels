@@ -217,6 +217,74 @@ OUTPUT SCHEMA:
     console.log("Ingestion complete for:", id);
     console.log("Extracted tagline:", tagline);
     console.log("Merged skills:", mergedSkills.length);
+    
+    // Trigger auto-connect with all other users (fire-and-forget)
+    // Use improved error handling and logging
+    (async () => {
+      try {
+        let autoConnectUrl: string;
+        try {
+          const url = new URL(req.url);
+          autoConnectUrl = `${url.protocol}//${url.host}/api/simulation/auto-connect`;
+          console.log(`[Auto-connect] Constructed URL from request: ${autoConnectUrl}`);
+        } catch (urlError) {
+          // Fallback to environment variable or localhost
+          const fallbackUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+          autoConnectUrl = `${fallbackUrl}/api/simulation/auto-connect`;
+          console.log(`[Auto-connect] Using fallback URL: ${autoConnectUrl}`);
+        }
+        
+        console.log(`[Auto-connect] Triggering for user ${id}...`);
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+          controller.abort();
+          console.error(`[Auto-connect] Request timed out after 30 seconds`);
+        }, 30000); // 30 second timeout (simulations can take time)
+        
+        try {
+          const response = await fetch(autoConnectUrl, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'User-Agent': 'Doppel-Ingest/1.0'
+            },
+            body: JSON.stringify({ userId: id }),
+            signal: controller.signal,
+          });
+          
+          clearTimeout(timeoutId);
+          
+          if (response.ok) {
+            const data = await response.json();
+            console.log(`[Auto-connect] Success! Simulations run: ${data.simulationsRun || 0}, Total: ${data.total || 0}`);
+            if (data.results && Array.isArray(data.results)) {
+              const successful = data.results.filter((r: any) => r.success).length;
+              const failed = data.results.filter((r: any) => !r.success).length;
+              console.log(`[Auto-connect] Results: ${successful} successful, ${failed} failed`);
+            }
+          } else {
+            const errorText = await response.text();
+            console.error(`[Auto-connect] HTTP Error ${response.status}: ${errorText}`);
+            console.error(`[Auto-connect] Response headers:`, Object.fromEntries(response.headers.entries()));
+          }
+        } catch (fetchError: any) {
+          clearTimeout(timeoutId);
+          if (fetchError.name === 'AbortError') {
+            console.error(`[Auto-connect] Request was aborted (likely timeout)`);
+          } else {
+            console.error(`[Auto-connect] Fetch error:`, fetchError.message);
+            console.error(`[Auto-connect] Error stack:`, fetchError.stack);
+            console.error(`[Auto-connect] Error name:`, fetchError.name);
+            console.error(`[Auto-connect] Error cause:`, fetchError.cause);
+          }
+        }
+      } catch (error: any) {
+        console.error(`[Auto-connect] Unexpected error:`, error.message);
+        console.error(`[Auto-connect] Error stack:`, error.stack);
+      }
+    })(); // Immediately invoke async function (fire-and-forget)
+    
     return NextResponse.json({ success: true, persona: finalPersona });
 
   } catch (error: any) {
@@ -465,6 +533,12 @@ async function fetchAndSummarizeX(xUrlOrUsername: string): Promise<any> {
           // Try to extract array from object
           tweets = Object.values(tweets).flat().filter((t: any) => typeof t === 'string' && t.trim());
         }
+        
+        // Check if we actually got tweets before breaking
+        if (!tweets || (Array.isArray(tweets) && tweets.length === 0)) {
+          console.log("Pipeline DONE but no tweets found. Outputs:", JSON.stringify(finalOutputs, null, 2));
+          return null;
+        }
         break;
       } else if (statusData.state === 'FAILED') {
         console.error("Gumloop pipeline failed:", statusData);
@@ -472,8 +546,9 @@ async function fetchAndSummarizeX(xUrlOrUsername: string): Promise<any> {
       }
     }
 
+    // If we exit the loop without breaking, check if we have tweets
     if (!tweets || (Array.isArray(tweets) && tweets.length === 0)) {
-      console.log("No tweets retrieved. Outputs:", JSON.stringify(finalOutputs, null, 2));
+      console.log("Polling completed but no tweets retrieved. Final outputs:", JSON.stringify(finalOutputs, null, 2));
       return null;
     }
 

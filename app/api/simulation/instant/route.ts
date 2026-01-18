@@ -82,7 +82,8 @@ export async function POST(req: Request) {
       participant1: me.id,
       participant2: partner.other_id,
       transcript: transcript,
-      score: analysis.score
+      score: analysis.score,
+      takeaways: analysis.takeaways || []
     };
     
     // Insert simulation data (try without select first to avoid trigger issues)

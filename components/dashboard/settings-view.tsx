@@ -880,10 +880,20 @@ export function SettingsView() {
               <p className="text-sm text-muted-foreground">
                 Write naturally so your Doppel sounds like you.
               </p>
+              <p className="text-xs text-muted-foreground/70">
+                Complete at least the first question. Additional questions are optional.
+              </p>
               
               {VIBE_CHECK_PROMPTS.map((prompt, index) => (
                 <div key={index} className="space-y-2">
-                  <p className="text-sm text-muted-foreground">{prompt}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-muted-foreground">{prompt}</p>
+                    {index > 0 && (
+                      <span className="text-xs text-muted-foreground/60 px-2 py-0.5 rounded-full bg-secondary border border-border">
+                        Optional
+                      </span>
+                    )}
+                  </div>
                   <Textarea
                     placeholder="Start typing how you'd actually write..."
                     value={promptResponses[index] || ""}
@@ -892,11 +902,17 @@ export function SettingsView() {
                   />
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span>{promptResponses[index]?.length || 0} characters</span>
-                    <span>
-                      {(promptResponses[index]?.length || 0) >= 100
-                        ? "✓ Good"
-                        : `${100 - (promptResponses[index]?.length || 0)} more`}
-                    </span>
+                    {index === 0 ? (
+                      <span>
+                        {(promptResponses[index]?.length || 0) >= 100
+                          ? "✓ Good"
+                          : `${100 - (promptResponses[index]?.length || 0)} more`}
+                      </span>
+                    ) : (
+                      <span>
+                        {(promptResponses[index]?.length || 0) >= 100 ? "✓ Good" : "Optional"}
+                      </span>
+                    )}
                   </div>
                 </div>
               ))}

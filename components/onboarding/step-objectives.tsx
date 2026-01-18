@@ -13,7 +13,7 @@ interface StepObjectivesProps {
   onPrev: () => void
 }
 
-const MIN_CUSTOM_GOALS = 2
+const MIN_CUSTOM_GOALS = 1
 
 export function StepObjectives({ soulData, updateSoulData, onNext, onPrev }: StepObjectivesProps) {
   const [networkingGoals, setNetworkingGoals] = useState<string[]>(

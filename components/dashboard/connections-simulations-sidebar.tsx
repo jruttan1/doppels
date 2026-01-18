@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { ChevronRight, Sparkles, MessageSquare, CheckCircle2, XCircle, Clock, Bot, ArrowRight } from "lucide-react"
+import { ChevronRight, Sparkles, MessageSquare, CheckCircle2, XCircle, Clock, ArrowRight, Calendar } from "lucide-react"
 import { ConnectionDetailModal } from "./connection-detail-modal"
 import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -21,6 +21,7 @@ interface ConnectionPreview {
   icebreaker: string
   status: "matched" | "connected"
   matchedAt: string
+  simulationId?: string
 }
 
 interface Simulation {
@@ -43,6 +44,7 @@ export function ConnectionsSimulationsSidebar() {
   const [activeTab, setActiveTab] = useState<"connections" | "simulations">("connections")
   const [connections, setConnections] = useState<ConnectionPreview[]>([])
   const [simulations, setSimulations] = useState<Simulation[]>([])
+  const [currentUserName, setCurrentUserName] = useState<string>("You")
   const supabase = createClient()
 
   useEffect(() => {
@@ -51,12 +53,23 @@ export function ConnectionsSimulationsSidebar() {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
 
+        // Fetch current user's name for avatar
+        const { data: currentUser } = await supabase
+          .from('users')
+          .select('name')
+          .eq('id', user.id)
+          .single()
+        
+        if (currentUser?.name) {
+          setCurrentUserName(currentUser.name)
+        }
+
         // Fetch all simulations
         const { data: simsData, error: simError } = await supabase
           .from('simulations')
-          .select('id, participant2, score, transcript, created_at')
+          .select('id, participant2, score, transcript')
           .eq('participant1', user.id)
-          .order('created_at', { ascending: false })
+          .order('score', { ascending: false, nullsFirst: false })
           .limit(50)
 
         if (simError) {
@@ -107,22 +120,8 @@ export function ConnectionsSimulationsSidebar() {
               icebreaker = firstMsg.substring(0, 100) + (firstMsg.length > 100 ? "..." : "")
             }
 
-            const createdAt = new Date(sim.created_at)
-            const now = new Date()
-            const diffMs = now.getTime() - createdAt.getTime()
-            const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
-            const diffDays = Math.floor(diffHours / 24)
-            let matchedAt = "Just now"
-            if (diffDays > 0) {
-              matchedAt = `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
-            } else if (diffHours > 0) {
-              matchedAt = `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
-            } else {
-              const diffMins = Math.floor(diffMs / (1000 * 60))
-              if (diffMins > 0) {
-                matchedAt = `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`
-              }
-            }
+            // No created_at column, so just show "Just now"
+            const matchedAt = "Just now"
 
             return {
               id: user?.id || sim.participant2,
@@ -133,6 +132,7 @@ export function ConnectionsSimulationsSidebar() {
               icebreaker,
               status: "matched" as const,
               matchedAt,
+              simulationId: sim.id,
             }
           })
 
@@ -152,22 +152,8 @@ export function ConnectionsSimulationsSidebar() {
             message: msg.text || msg.content || "",
           }))
 
-          const createdAt = new Date(sim.created_at)
-          const now = new Date()
-          const diffMs = now.getTime() - createdAt.getTime()
-          const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
-          const diffDays = Math.floor(diffHours / 24)
-          let startedAt = "Just now"
-          if (diffDays > 0) {
-            startedAt = `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
-          } else if (diffHours > 0) {
-            startedAt = `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
-          } else {
-            const diffMins = Math.floor(diffMs / (1000 * 60))
-            if (diffMins > 0) {
-              startedAt = `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`
-            }
-          }
+          // No created_at column, so just show "Just now"
+          const startedAt = "Just now"
 
           return {
             id: sim.id,
@@ -192,6 +178,13 @@ export function ConnectionsSimulationsSidebar() {
     }
 
     fetchData()
+    
+    // Poll for new simulations every 10 seconds
+    const interval = setInterval(() => {
+      fetchData()
+    }, 10000)
+    
+    return () => clearInterval(interval)
   }, [supabase])
 
   const matchedConnections = connections.filter((c) => c.status === "matched")
@@ -357,124 +350,265 @@ export function ConnectionsSimulationsSidebar() {
         </Tabs>
       </div>
 
-      <ConnectionDetailModal connection={selectedConnection} onClose={() => setSelectedConnection(null)} />
+      <ConnectionDetailModal 
+        connection={selectedConnection} 
+        onClose={() => {
+          setSelectedConnection(null)
+          setSelectedSimulation(null) // Clear simulation when closing connection modal
+        }}
+        onViewSimulation={async (simId) => {
+          // Clear any existing simulation first
+          setSelectedSimulation(null)
+          console.log("onViewSimulation called with:", simId)
+          console.log("Available simulations:", simulations.map(s => s.id))
+          
+          // First try to find in existing simulations array
+          let sim = simulations.find(s => s.id === simId)
+          console.log("Found simulation in array:", !!sim)
+          
+          // If not found, fetch it directly from the database
+          if (!sim && selectedConnection) {
+            console.log("Fetching simulation from database...")
+            try {
+              const { data: { user } } = await supabase.auth.getUser()
+              if (!user) return
 
-      {/* Simulation detail dialog */}
-      <Dialog open={!!selectedSimulation} onOpenChange={() => setSelectedSimulation(null)}>
-        <DialogContent className="max-w-2xl bg-card border-border shadow-lg rounded-[4px] h-full w-full max-h-full sm:h-auto sm:max-h-[90vh] sm:w-auto sm:max-w-2xl flex flex-col p-0 sm:p-6 fixed inset-0 sm:inset-auto sm:top-[50%] sm:left-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] rounded-none sm:rounded-[4px]">
+              const { data: simData } = await supabase
+                .from('simulations')
+                .select('id, participant2, score, transcript')
+                .eq('id', simId)
+                .eq('participant1', user.id)
+                .single()
+
+              if (simData) {
+                // Fetch user details for the simulation
+                const { data: targetUser } = await supabase
+                  .from('users')
+                  .select('id, name, tagline, persona')
+                  .eq('id', simData.participant2)
+                  .single()
+
+                if (targetUser) {
+                  const persona = targetUser.persona as any
+                  const identity = persona?.identity || {}
+                  const tagline = targetUser.tagline || ""
+                  const role = identity?.role || tagline.split("@")[0]?.trim() || "Professional"
+                  const company = identity?.company || tagline.split("@")[1]?.split("|")[0]?.trim() || ""
+                  const roleText = company ? `${role} @ ${company}` : role
+
+                  const transcript = simData.transcript as any[]
+                  const messages = (transcript || []).map((msg: any, idx: number) => ({
+                    agent: (idx % 2 === 0 ? "A" : "B") as "A" | "B",
+                    message: msg.text || msg.content || "",
+                  }))
+
+                  sim = {
+                    id: simData.id,
+                    targetName: targetUser.name || "Unknown",
+                    targetRole: roleText,
+                    targetAvatar: undefined,
+                    status: simData.score !== null && simData.score !== undefined ? "completed" : "in_progress",
+                    score: simData.score || undefined,
+                    turns: messages.length,
+                    startedAt: "Just now",
+                    completedAt: simData.score !== null ? "Just now" : undefined,
+                    messages,
+                    summary: simData.score && simData.score >= 70 ? "High compatibility match" : undefined,
+                  }
+                }
+              }
+            } catch (error) {
+              console.error("Error fetching simulation:", error)
+            }
+          }
+
+          if (sim) {
+            console.log("Setting selected simulation:", sim.id)
+            setSelectedSimulation(sim)
+            setSelectedConnection(null)
+          } else {
+            console.error("Simulation not found:", simId)
+            console.error("Available simulations:", simulations.map(s => ({ id: s.id, name: s.targetName })))
+          }
+        }}
+      />
+
+      {/* Simulation detail dialog - Improved Chat UI */}
+      <Dialog 
+        open={!!selectedSimulation} 
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedSimulation(null)
+          }
+        }}
+        key={selectedSimulation?.id} // Force re-render when simulation changes
+      >
+        <DialogContent className="max-w-3xl bg-card border-border shadow-lg h-[95vh] w-full max-h-[95vh] sm:h-auto sm:max-h-[95vh] sm:w-auto sm:max-w-3xl flex flex-col p-0 fixed inset-0 sm:inset-auto sm:top-[50%] sm:left-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] rounded-none sm:rounded-[4px]">
           {selectedSimulation && (
             <>
-              <div className="flex-1 overflow-y-auto px-4 pr-12 sm:pr-4 sm:px-0 pb-4 sm:pb-0">
-                <DialogHeader className="pt-6 sm:pt-0">
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                        <Bot className="w-5 h-5 text-primary" />
-                      </div>
-                      <span className="text-sm font-medium">Your Agent</span>
-                    </div>
-                    <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                    <div className="flex items-center gap-2">
-                      <Avatar className="w-10 h-10">
-                        <AvatarImage
-                          src={
-                            selectedSimulation.targetAvatar ||
-                            "/placeholder.svg?height=40&width=40&query=professional headshot"
-                          }
-                        />
-                        <AvatarFallback>
-                          {selectedSimulation.targetName
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="text-sm font-medium">{selectedSimulation.targetName}</p>
-                        <p className="text-xs text-muted-foreground">{selectedSimulation.targetRole}</p>
-                      </div>
-                    </div>
-                    <div className="ml-auto">{getStatusBadge(selectedSimulation.status, selectedSimulation.score)}</div>
-                  </div>
-                </DialogHeader>
-
-                <ScrollArea className="max-h-[400px] pr-4 mt-4">
-                  <div className="space-y-4">
-                    {selectedSimulation.messages.map((msg, i) => (
-                      <div key={i} className={`flex gap-3 ${msg.agent === "A" ? "" : "flex-row-reverse"}`}>
-                        <div
-                          className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                            msg.agent === "A" ? "bg-primary/20" : "bg-secondary"
-                          }`}
-                        >
-                          {msg.agent === "A" ? (
-                            <Bot className="w-4 h-4 text-primary" />
-                          ) : (
-                            <span className="text-xs font-medium">
-                              {selectedSimulation.targetName
-                                .split(" ")
-                                .map((n) => n[0])
-                                .join("")}
-                            </span>
-                          )}
-                        </div>
-                        <div
-                          className={`max-w-[80%] p-4 rounded-2xl ${
-                            msg.agent === "A"
-                              ? "bg-primary/10 border border-primary/20 rounded-tl-none"
-                              : "bg-secondary rounded-tr-none"
-                          }`}
-                        >
-                          <p className="text-sm leading-relaxed">{msg.message}</p>
+              {/* Header */}
+              <div className="px-6 pt-6 pb-4 border-b border-border">
+                <DialogHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="w-12 h-12 shrink-0">
+                          <AvatarFallback className="bg-primary/20 text-primary text-sm font-semibold">
+                            {currentUserName
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")
+                              .toUpperCase()
+                              .slice(0, 2)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-sm font-semibold">Your Agent</p>
+                          <p className="text-xs text-muted-foreground">{currentUserName}</p>
                         </div>
                       </div>
-                    ))}
-                    {selectedSimulation.status === "in_progress" && (
-                      <div className="flex gap-3 flex-row-reverse">
-                        <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center shrink-0">
-                          <span className="text-xs font-medium">
+                      <ArrowRight className="w-5 h-5 text-muted-foreground" />
+                      <div className="flex items-center gap-3">
+                        <Avatar className="w-12 h-12">
+                          <AvatarImage
+                            src={
+                              selectedSimulation.targetAvatar ||
+                              "/placeholder.svg?height=48&width=48&query=professional headshot"
+                            }
+                          />
+                          <AvatarFallback className="text-sm">
                             {selectedSimulation.targetName
                               .split(" ")
                               .map((n) => n[0])
                               .join("")}
-                          </span>
-                        </div>
-                        <div className="bg-secondary p-4 rounded-2xl rounded-tr-none">
-                          <div className="flex gap-1">
-                            <span
-                              className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"
-                              style={{ animationDelay: "0ms" }}
-                            />
-                            <span
-                              className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"
-                              style={{ animationDelay: "150ms" }}
-                            />
-                            <span
-                              className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"
-                              style={{ animationDelay: "300ms" }}
-                            />
-                          </div>
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-sm font-semibold">{selectedSimulation.targetName}</p>
+                          <p className="text-xs text-muted-foreground">{selectedSimulation.targetRole}</p>
                         </div>
                       </div>
-                    )}
-                  </div>
-                </ScrollArea>
-
-                {selectedSimulation.summary && (
-                  <div className="mt-4 p-4 rounded-xl bg-secondary/50 border border-border">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Sparkles className="w-4 h-4 text-primary" />
-                      <h4 className="text-sm font-medium">AI Summary</h4>
                     </div>
-                    <p className="text-sm text-muted-foreground">{selectedSimulation.summary}</p>
+                    <div className="flex items-center gap-3">
+                      {getStatusBadge(selectedSimulation.status, selectedSimulation.score)}
+                      <div className="text-xs text-muted-foreground">
+                        {selectedSimulation.turns} messages
+                      </div>
+                    </div>
+                  </div>
+                </DialogHeader>
+              </div>
+
+              {/* Chat Messages */}
+              <div className="flex-1 overflow-hidden flex flex-col min-h-0" style={{ minHeight: 0 }}>
+                <ScrollArea className="h-full px-6 py-4">
+                  <div className="space-y-6">
+                  {selectedSimulation.messages.map((msg, i) => {
+                    const isMyAgent = msg.agent === "A"
+                    return (
+                      <div key={i} className={`flex gap-4 ${isMyAgent ? "" : "flex-row-reverse"}`}>
+                        <div className="shrink-0">
+                          {isMyAgent ? (
+                            <Avatar className="w-10 h-10">
+                              <AvatarFallback className="bg-primary/20 text-primary text-xs font-semibold">
+                                {currentUserName
+                                  .split(" ")
+                                  .map((n) => n[0])
+                                  .join("")
+                                  .toUpperCase()
+                                  .slice(0, 2)}
+                              </AvatarFallback>
+                            </Avatar>
+                          ) : (
+                            <Avatar className="w-10 h-10">
+                              <AvatarImage
+                                src={
+                                  selectedSimulation.targetAvatar ||
+                                  "/placeholder.svg?height=40&width=40&query=professional headshot"
+                                }
+                              />
+                              <AvatarFallback className="text-xs">
+                                {selectedSimulation.targetName
+                                  .split(" ")
+                                  .map((n) => n[0])
+                                  .join("")}
+                              </AvatarFallback>
+                            </Avatar>
+                          )}
+                        </div>
+                        <div className={`flex-1 min-w-0 ${isMyAgent ? "" : "flex flex-col items-end"}`}>
+                          <div
+                            className={`inline-block max-w-[85%] sm:max-w-[75%] p-4 rounded-2xl ${
+                              isMyAgent
+                                ? "bg-primary/10 border border-primary/20 rounded-tl-none"
+                                : "bg-secondary rounded-tr-none"
+                            }`}
+                          >
+                            <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                              {msg.message}
+                            </p>
+                          </div>
+                          {i === selectedSimulation.messages.length - 1 && (
+                            <p className="text-[10px] text-muted-foreground mt-1 px-1">
+                              {selectedSimulation.startedAt}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                  {selectedSimulation.status === "in_progress" && (
+                    <div className="flex gap-4 flex-row-reverse">
+                      <div className="shrink-0">
+                        <Avatar className="w-10 h-10">
+                          <AvatarFallback className="text-xs">
+                            {selectedSimulation.targetName
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")}
+                          </AvatarFallback>
+                        </Avatar>
+                      </div>
+                      <div className="bg-secondary p-4 rounded-2xl rounded-tr-none">
+                        <div className="flex gap-1.5">
+                          <span
+                            className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"
+                            style={{ animationDelay: "0ms" }}
+                          />
+                          <span
+                            className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"
+                            style={{ animationDelay: "150ms" }}
+                          />
+                          <span
+                            className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"
+                            style={{ animationDelay: "300ms" }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-4 border-t border-border bg-secondary/30">
+                {selectedSimulation.summary && (
+                  <div className="mb-4 p-3 rounded-lg bg-background/50 border border-border">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Sparkles className="w-3.5 h-3.5 text-primary" />
+                      <h4 className="text-xs font-medium">AI Summary</h4>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{selectedSimulation.summary}</p>
                   </div>
                 )}
 
                 {selectedSimulation.status === "completed" &&
                   selectedSimulation.score &&
                   selectedSimulation.score >= 70 && (
-                    <div className="flex gap-3 mt-4 pb-4 sm:pb-0">
+                    <div className="flex gap-3">
                       <Button className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground">
+                        <Calendar className="w-4 h-4 mr-2" />
                         Book Coffee Chat
                       </Button>
                       <Button variant="outline" className="flex-1 bg-transparent">

@@ -106,18 +106,54 @@ export async function POST(req: Request) {
 
     // Trigger ingestion (don't await - let it run in background)
     // Use request URL to construct proper endpoint (works in all environments)
-    const url = new URL(req.url);
-    const baseUrl = `${url.protocol}//${url.host}`;
-    const ingestUrl = `${baseUrl}/api/ingest`;
-    
-    fetch(ingestUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: userId }),
-    }).catch(e => {
-      console.error("Ingestion trigger failed:", e.message);
-      // Don't throw - ingestion can happen later via manual trigger if needed
-    });
+    try {
+      const url = new URL(req.url);
+      const baseUrl = `${url.protocol}//${url.host}`;
+      const ingestUrl = `${baseUrl}/api/ingest`;
+      
+      console.log(`Triggering ingestion at: ${ingestUrl}`);
+      
+      fetch(ingestUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: userId }),
+      })
+        .then(res => {
+          if (!res.ok) {
+            console.error(`Ingestion API returned error: ${res.status} ${res.statusText}`);
+            return res.text().then(text => {
+              console.error("Ingestion error response:", text);
+            });
+          }
+          console.log("Ingestion triggered successfully");
+          return res.json();
+        })
+        .then(data => {
+          console.log("Ingestion response:", data);
+        })
+        .catch(e => {
+          console.error("Ingestion trigger failed:", e.message);
+          console.error("Ingestion error stack:", e.stack);
+          // Don't throw - ingestion can happen later via manual trigger if needed
+        });
+    } catch (urlError: any) {
+      console.error("Failed to construct ingestion URL:", urlError.message);
+      // Fallback to environment variable if URL construction fails
+      const fallbackUrl = process.env.NEXT_PUBLIC_SITE_URL 
+        ? `${process.env.NEXT_PUBLIC_SITE_URL}/api/ingest`
+        : null;
+      
+      if (fallbackUrl) {
+        console.log(`Using fallback URL: ${fallbackUrl}`);
+        fetch(fallbackUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: userId }),
+        }).catch(e => console.error("Fallback ingestion trigger failed:", e.message));
+      } else {
+        console.error("No valid ingestion URL available - ingestion will need to be triggered manually");
+      }
+    }
 
     return NextResponse.json({ success: true });
 

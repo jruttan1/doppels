@@ -28,38 +28,50 @@ export function AgentStatus() {
       if (authError) {
         console.error("Auth error:", authError)
         alert("Authentication error: " + authError.message)
+        setIsRunningSimulation(false)
         return
       }
       
       if (!user) {
         console.error("No user found")
         alert("You must be logged in")
+        setIsRunningSimulation(false)
         return
       }
 
-      console.log("Calling simulation API for user:", user.id)
-      const res = await fetch('/api/simulation/instant', {
+      console.log("Calling auto-connect API for user:", user.id)
+      
+      // Call auto-connect to run simulations with all users
+      const res = await fetch('/api/simulation/auto-connect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id })
       })
 
-      console.log("Simulation API response status:", res.status)
+      console.log("Auto-connect API response status:", res.status)
       const data = await res.json()
-      console.log("Simulation API response:", data)
+      console.log("Auto-connect API response:", data)
 
-      if (data.success) {
-        console.log("Simulation successful, reloading page...")
-        // Refresh the page to show new simulation
-        setTimeout(() => window.location.reload(), 500)
+      if (res.ok && data.success !== false) {
+        const simulationsRun = data.simulationsRun || 0
+        const total = data.total || 0
+        console.log(`Auto-connect successful: ${simulationsRun} simulations run out of ${total} total`)
+        
+        if (simulationsRun > 0) {
+          // Refresh the page to show new simulations
+          setTimeout(() => window.location.reload(), 1000)
+        } else {
+          alert(data.message || "No new simulations to run. You may have already simulated with all available users.")
+          setIsRunningSimulation(false)
+        }
       } else {
-        console.error("Simulation failed:", data.error)
-        alert(data.error || "Failed to run simulation")
+        console.error("Auto-connect failed:", data.error || data.message)
+        alert(data.error || data.message || "Failed to run simulations")
+        setIsRunningSimulation(false)
       }
     } catch (error: any) {
       console.error("Simulation error:", error)
-      alert(error.message || "Failed to run simulation")
-    } finally {
+      alert(error.message || "Failed to run simulations")
       setIsRunningSimulation(false)
     }
   }
@@ -103,12 +115,12 @@ export function AgentStatus() {
               {isRunningSimulation ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Running...
+                  Running Simulations...
                 </>
               ) : (
                 <>
                   <Sparkles className="w-4 h-4" />
-                  Run Simulation
+                  Run All Simulations
                 </>
               )}
             </Button>

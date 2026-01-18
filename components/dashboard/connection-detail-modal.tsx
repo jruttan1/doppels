@@ -1,11 +1,14 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Progress } from "@/components/ui/progress"
-import { Calendar, MessageCircle, Linkedin, ExternalLink, Sparkles, Target, Users, MessageSquare } from "lucide-react"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Calendar, MessageCircle, Linkedin, ExternalLink, Sparkles, Target, Users, MessageSquare, ArrowRight } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 
 interface ConnectionPreview {
   id: string
@@ -16,27 +19,170 @@ interface ConnectionPreview {
   icebreaker: string
   status: "matched" | "connected"
   matchedAt: string
+  simulationId?: string
 }
 
 interface ConnectionDetailModalProps {
   connection: ConnectionPreview | null
   onClose: () => void
+  onViewSimulation?: (simulationId: string) => void
 }
 
-export function ConnectionDetailModal({ connection, onClose }: ConnectionDetailModalProps) {
+export function ConnectionDetailModal({ connection, onClose, onViewSimulation }: ConnectionDetailModalProps) {
+  const [simulationId, setSimulationId] = useState<string | null>(null)
+  const [showChat, setShowChat] = useState(false)
+  const [messages, setMessages] = useState<Array<{ speaker: string; text: string; id: string }>>([])
+  const [talkingPoints, setTalkingPoints] = useState<string[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [currentUserName, setCurrentUserName] = useState<string>("You")
+  const supabase = createClient()
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        const { data: currentUser } = await supabase
+          .from('users')
+          .select('name')
+          .eq('id', user.id)
+          .single()
+        
+        if (currentUser?.name) {
+          setCurrentUserName(currentUser.name)
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error)
+      }
+    }
+
+    fetchUserData()
+  }, [supabase])
+
+  // Reset state when connection changes
+  useEffect(() => {
+    if (connection) {
+      // Reset all state when a new connection is opened
+      setSimulationId(null)
+      setMessages([])
+      setTalkingPoints([])
+      setShowChat(false)
+      
+      // Find the simulation for this connection
+      const findSimulation = async () => {
+        try {
+          const { data: { user } } = await supabase.auth.getUser()
+          if (!user) return
+
+          const { data: sim } = await supabase
+            .from('simulations')
+            .select('id, transcript, takeaways')
+            .eq('participant1', user.id)
+            .eq('participant2', connection.id)
+            .order('score', { ascending: false })
+            .limit(1)
+            .single()
+
+          if (sim) {
+            setSimulationId(sim.id)
+            if (sim.transcript && Array.isArray(sim.transcript)) {
+              setMessages(sim.transcript as any[])
+            }
+            if (sim.takeaways && Array.isArray(sim.takeaways)) {
+              setTalkingPoints(sim.takeaways)
+            } else {
+              // Fallback to empty array if no takeaways
+              setTalkingPoints([])
+            }
+          }
+        } catch (error) {
+          console.error("Error finding simulation:", error)
+        }
+      }
+      findSimulation()
+    }
+  }, [connection?.id, supabase]) // Use connection.id to detect changes
+
+  const handleViewSimulation = () => {
+    console.log("View Simulation clicked", { 
+      connection: connection?.id, 
+      simulationId, 
+      connectionSimulationId: connection?.simulationId,
+      hasOnViewSimulation: !!onViewSimulation,
+      messagesCount: messages.length 
+    })
+    
+    if (!connection) {
+      console.warn("No connection available")
+      return
+    }
+    
+    // Use simulationId from connection if available, otherwise use the one we fetched
+    const simId = connection.simulationId || simulationId
+    console.log("Using simulation ID:", simId)
+    
+    if (simId && onViewSimulation) {
+      console.log("Calling onViewSimulation with:", simId)
+      // Don't close immediately - let the simulation dialog open first
+      setTimeout(() => {
+        onViewSimulation(simId)
+        onClose()
+      }, 100)
+    } else if (messages.length > 0) {
+      // Fallback: show inline chat if we have messages but no simulation ID
+      console.log("Showing inline chat as fallback")
+      setShowChat(true)
+    } else {
+      console.warn("No simulation found for this connection. Attempting to fetch...")
+      // Try to fetch simulation one more time
+      if (connection.id) {
+        const fetchAndShow = async () => {
+          try {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return
+
+            const { data: sim } = await supabase
+              .from('simulations')
+              .select('id, transcript')
+              .eq('participant1', user.id)
+              .eq('participant2', connection.id)
+              .order('score', { ascending: false })
+              .limit(1)
+              .single()
+
+            if (sim) {
+              setSimulationId(sim.id)
+              if (sim.transcript && Array.isArray(sim.transcript)) {
+                setMessages(sim.transcript as any[])
+              }
+              if (onViewSimulation && sim.id) {
+                onViewSimulation(sim.id)
+                setTimeout(() => {
+                  onClose()
+                }, 50)
+              } else {
+                setShowChat(true)
+              }
+            } else {
+              console.error("No simulation found in database")
+            }
+          } catch (error) {
+            console.error("Error fetching simulation:", error)
+          }
+        }
+        fetchAndShow()
+      }
+    }
+  }
+
   if (!connection) return null
 
   const scores = {
-    relevance: 92,
-    reciprocity: 88,
-    toneMatch: 95,
+    relevance: Math.min(95, connection.compatibility + 3),
+    reciprocity: Math.min(90, connection.compatibility - 5),
+    toneMatch: Math.min(98, connection.compatibility + 8),
   }
-
-  const talkingPoints = [
-    "Both have experience scaling engineering teams from 5 to 50+",
-    "Shared interest in developer experience and tooling",
-    "Complementary skills: your backend expertise + their frontend focus",
-  ]
 
   return (
     <Dialog open={!!connection} onOpenChange={() => onClose()}>
@@ -113,20 +259,22 @@ export function ConnectionDetailModal({ connection, onClose }: ConnectionDetailM
           </div>
 
           {/* Talking Points */}
-          <div className="space-y-3">
-            <h4 className="text-sm font-medium flex items-center gap-2">
-              <Users className="w-4 h-4 text-primary" />
-              Talking Points
-            </h4>
-            <ul className="space-y-2">
-              {talkingPoints.map((point, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                  <span className="text-primary mt-1">•</span>
-                  {point}
-                </li>
-              ))}
-            </ul>
-          </div>
+          {talkingPoints.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium flex items-center gap-2">
+                <Users className="w-4 h-4 text-primary" />
+                Talking Points
+              </h4>
+              <ul className="space-y-2">
+                {talkingPoints.map((point, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                    <span className="text-primary mt-1">•</span>
+                    {point}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex flex-col sm:flex-row gap-3 pt-2">
@@ -134,7 +282,17 @@ export function ConnectionDetailModal({ connection, onClose }: ConnectionDetailM
               <Calendar className="w-4 h-4" />
               Book Coffee Chat
             </Button>
-            <Button variant="outline" className="flex-1 gap-2 bg-transparent">
+            <Button 
+              type="button"
+              variant="outline" 
+              className="flex-1 gap-2 bg-transparent"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                handleViewSimulation()
+              }}
+              disabled={isLoading}
+            >
               <MessageCircle className="w-4 h-4" />
               View Simulation
             </Button>
@@ -147,6 +305,94 @@ export function ConnectionDetailModal({ connection, onClose }: ConnectionDetailM
               <ExternalLink className="w-3 h-3" />
             </Button>
           </div>
+
+          {/* Chat View */}
+          {showChat && messages.length > 0 && (
+            <div className="mt-6 pt-6 border-t border-border">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <Avatar className="w-8 h-8">
+                      <AvatarFallback className="bg-primary/20 text-primary text-xs font-semibold">
+                        {currentUserName
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .toUpperCase()
+                          .slice(0, 2)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-xs font-medium">Your Agent</span>
+                  </div>
+                  <ArrowRight className="w-3 h-3 text-muted-foreground" />
+                  <div className="flex items-center gap-2">
+                    <Avatar className="w-8 h-8">
+                      <AvatarImage src={connection.avatar || "/placeholder.svg"} />
+                      <AvatarFallback className="text-xs">
+                        {connection.name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-xs font-medium">{connection.name}</span>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowChat(false)}
+                  className="text-xs"
+                >
+                  Hide Chat
+                </Button>
+              </div>
+
+              <ScrollArea className="h-[350px] pr-2">
+                <div className="space-y-3">
+                  {messages.map((msg, i) => {
+                    const isMyAgent = i % 2 === 0
+                    return (
+                      <div key={i} className={`flex gap-2.5 ${isMyAgent ? "" : "flex-row-reverse"}`}>
+                        <div className="shrink-0">
+                          {isMyAgent ? (
+                            <Avatar className="w-7 h-7">
+                              <AvatarFallback className="bg-primary/20 text-primary text-[10px] font-semibold">
+                                {currentUserName
+                                  .split(" ")
+                                  .map((n) => n[0])
+                                  .join("")
+                                  .toUpperCase()
+                                  .slice(0, 2)}
+                              </AvatarFallback>
+                            </Avatar>
+                          ) : (
+                            <Avatar className="w-7 h-7">
+                              <AvatarFallback className="text-[10px]">
+                                {connection.name
+                                  .split(" ")
+                                  .map((n) => n[0])
+                                  .join("")}
+                              </AvatarFallback>
+                            </Avatar>
+                          )}
+                        </div>
+                        <div
+                          className={`max-w-[75%] p-3 rounded-xl ${
+                            isMyAgent
+                              ? "bg-primary/10 border border-primary/20 rounded-tl-none"
+                              : "bg-secondary rounded-tr-none"
+                          }`}
+                        >
+                          <p className="text-xs leading-relaxed whitespace-pre-wrap break-words">{msg.text || ""}</p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </ScrollArea>
+            </div>
+          )}
         </div>
         </div>
       </DialogContent>

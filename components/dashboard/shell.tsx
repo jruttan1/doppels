@@ -118,7 +118,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed top-0 left-0 z-40 h-screen w-80 border-r border-border bg-card transition-transform lg:translate-x-0 shrink-0",
+          "fixed top-0 left-0 z-40 h-screen w-96 border-r border-border bg-card transition-transform lg:translate-x-0 shrink-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -197,7 +197,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
       {/* Main content */}
       <main 
-        className="pt-14 lg:pt-0 lg:pl-80 h-screen flex flex-col overflow-hidden min-w-0"
+        className="pt-14 lg:pt-0 lg:pl-96 h-screen flex flex-col overflow-hidden min-w-0"
       >
         <div className="hidden lg:flex items-center justify-between px-6 h-12 border-b border-border bg-card/50 backdrop-blur-sm shrink-0 z-20">
           <div className="relative">

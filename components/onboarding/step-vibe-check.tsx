@@ -44,7 +44,8 @@ export function StepVibeCheck({ soulData, updateSoulData, onNext, onPrev }: Step
   }
 
   const totalCharacters = promptResponses.reduce((sum, response) => sum + response.length, 0)
-  const isValid = promptResponses.every((response) => (response?.length || 0) >= 100)
+  // Only require the first prompt to be filled (>= 100 characters)
+  const isValid = (promptResponses[0]?.length || 0) >= 100
 
   return (
     <div className="w-full max-w-2xl">
@@ -55,6 +56,9 @@ export function StepVibeCheck({ soulData, updateSoulData, onNext, onPrev }: Step
         <p className="text-white/50">
           Write naturally so your Doppel sounds like you.
         </p>
+        <p className="text-white/40 text-sm mt-2">
+          Complete at least the first question. Additional questions are optional.
+        </p>
       </div>
 
       <div className="space-y-6">
@@ -63,9 +67,16 @@ export function StepVibeCheck({ soulData, updateSoulData, onNext, onPrev }: Step
             key={index} 
             className="rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-xl p-6"
           >
-            <p className="text-sm text-white/70 mb-4">
-              {prompt}
-            </p>
+            <div className="flex items-center gap-2 mb-4">
+              <p className="text-sm text-white/70">
+                {prompt}
+              </p>
+              {index > 0 && (
+                <span className="text-xs text-white/40 px-2 py-0.5 rounded-full bg-white/5 border border-white/10">
+                  Optional
+                </span>
+              )}
+            </div>
             
             <div className="relative">
               <textarea
@@ -83,13 +94,19 @@ export function StepVibeCheck({ soulData, updateSoulData, onNext, onPrev }: Step
             
             <div className="flex justify-between mt-3 text-xs">
               <span className="text-white/30">{promptResponses[index]?.length || 0} characters</span>
-              <span className={cn(
-                (promptResponses[index]?.length || 0) >= 100 ? "text-white/60" : "text-white/30"
-              )}>
-                {(promptResponses[index]?.length || 0) >= 100
-                  ? "✓ Good"
-                  : `${100 - (promptResponses[index]?.length || 0)} more`}
-              </span>
+              {index === 0 ? (
+                <span className={cn(
+                  (promptResponses[index]?.length || 0) >= 100 ? "text-white/60" : "text-white/30"
+                )}>
+                  {(promptResponses[index]?.length || 0) >= 100
+                    ? "✓ Good"
+                    : `${100 - (promptResponses[index]?.length || 0)} more`}
+                </span>
+              ) : (
+                <span className="text-white/40">
+                  {(promptResponses[index]?.length || 0) >= 100 ? "✓ Good" : "Optional"}
+                </span>
+              )}
             </div>
           </div>
         ))}
