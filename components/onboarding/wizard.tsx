@@ -3,20 +3,29 @@
 import { useState } from "react"
 import { OnboardingHeader } from "./header"
 import { StepDocuments } from "./step-documents"
+import { StepSkills } from "./step-skills"
 import { StepVibeCheck } from "./step-vibe-check"
+import { StepExperienceProjects } from "./step-experience-projects"
+import { StepInterests } from "./step-interests"
 import { StepObjectives } from "./step-objectives"
 import { StepFilters } from "./step-filters"
 import { StepReview } from "./step-review"
 import type { SoulFileData } from "@/lib/types"
 
-const STEPS = ["Documents", "Vibe Check", "Objectives", "Filters", "Review"]
+const STEPS = ["Documents", "Skills", "Vibe Check", "Experience & Projects", "Interests", "Goals", "Filters", "Review"]
 
 export function OnboardingWizard() {
   const [currentStep, setCurrentStep] = useState(0)
   const [soulData, setSoulData] = useState<Partial<SoulFileData>>({
-    documents: [],
-    vibeCheck: "",
-    objectives: [],
+    skills_possessed: [],
+    skills_desired: [],
+    networking_goals: [],
+    raw_assets: {
+      voice_snippet: "",
+      experience_log: [],
+      project_list: [],
+      interests: [],
+    },
     filters: {
       locations: [],
       skills: [],
@@ -45,14 +54,27 @@ export function OnboardingWizard() {
       case 0:
         return <StepDocuments soulData={soulData} updateSoulData={updateSoulData} onNext={nextStep} />
       case 1:
-        return <StepVibeCheck soulData={soulData} updateSoulData={updateSoulData} onNext={nextStep} onPrev={prevStep} />
+        return <StepSkills soulData={soulData} updateSoulData={updateSoulData} onNext={nextStep} onPrev={prevStep} />
       case 2:
+        return <StepVibeCheck soulData={soulData} updateSoulData={updateSoulData} onNext={nextStep} onPrev={prevStep} />
+      case 3:
+        return (
+          <StepExperienceProjects
+            soulData={soulData}
+            updateSoulData={updateSoulData}
+            onNext={nextStep}
+            onPrev={prevStep}
+          />
+        )
+      case 4:
+        return <StepInterests soulData={soulData} updateSoulData={updateSoulData} onNext={nextStep} onPrev={prevStep} />
+      case 5:
         return (
           <StepObjectives soulData={soulData} updateSoulData={updateSoulData} onNext={nextStep} onPrev={prevStep} />
         )
-      case 3:
+      case 6:
         return <StepFilters soulData={soulData} updateSoulData={updateSoulData} onNext={nextStep} onPrev={prevStep} />
-      case 4:
+      case 7:
         return <StepReview soulData={soulData} onPrev={prevStep} />
       default:
         return null

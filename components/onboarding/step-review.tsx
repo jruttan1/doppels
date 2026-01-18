@@ -13,15 +13,6 @@ interface StepReviewProps {
   onPrev: () => void
 }
 
-const OBJECTIVE_LABELS: Record<string, string> = {
-  cofounder: "Find a Co-founder",
-  hire: "Hire Talent",
-  job: "Find a Role",
-  invest: "Invest / Get Investment",
-  advise: "Advisory / Mentorship",
-  network: "General Networking",
-}
-
 export function StepReview({ soulData, onPrev }: StepReviewProps) {
   const router = useRouter()
   const [isDeploying, setIsDeploying] = useState(false)
@@ -47,64 +38,157 @@ export function StepReview({ soulData, onPrev }: StepReviewProps) {
 
       <div className="space-y-4">
         {/* Documents */}
-        <Card className="glass border-border">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm flex items-center gap-2 text-muted-foreground">
-              <FileText className="w-4 h-4" />
-              Documents & Profiles
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {soulData.documents && soulData.documents.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {soulData.documents.map((doc, i) => (
-                  <Badge key={i} variant="secondary">
-                    {doc.name}
+        {(soulData.documents && soulData.documents.length > 0) || soulData.linkedinUrl || soulData.githubUrl ? (
+          <Card className="bg-card border-border shadow-md">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2 text-muted-foreground">
+                <FileText className="w-4 h-4" />
+                Documents & Profiles
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {soulData.documents && soulData.documents.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {soulData.documents.map((doc, i) => (
+                    <Badge key={i} variant="secondary">
+                      {doc.name}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              {soulData.linkedinUrl && <p className="text-sm text-muted-foreground">LinkedIn: {soulData.linkedinUrl}</p>}
+              {soulData.githubUrl && <p className="text-sm text-muted-foreground">GitHub: {soulData.githubUrl}</p>}
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {/* Skills */}
+        {((soulData.skills_possessed && soulData.skills_possessed.length > 0) || (soulData.skills_desired && soulData.skills_desired.length > 0)) && (
+          <Card className="bg-card border-border shadow-md">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2 text-muted-foreground">
+                <Target className="w-4 h-4" />
+                Skills
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {soulData.skills_possessed && soulData.skills_possessed.length > 0 && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Skills You Have</p>
+                  <div className="flex flex-wrap gap-1">
+                    {soulData.skills_possessed.map((skill) => (
+                      <Badge key={skill} variant="outline" className="text-xs">
+                        {skill}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {soulData.skills_desired && soulData.skills_desired.length > 0 && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Skills You're Looking For</p>
+                  <div className="flex flex-wrap gap-1">
+                    {soulData.skills_desired.map((skill) => (
+                      <Badge key={skill} variant="outline" className="text-xs">
+                        {skill}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Voice Signature */}
+        {soulData.raw_assets?.voice_snippet && (
+          <Card className="bg-card border-border shadow-md">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2 text-muted-foreground">
+                <MessageCircle className="w-4 h-4" />
+                Voice Signature
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm italic text-muted-foreground line-clamp-3">
+                &ldquo;{soulData.raw_assets.voice_snippet.slice(0, 200)}...&rdquo;
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Experience & Projects */}
+        {((soulData.raw_assets?.experience_log && soulData.raw_assets.experience_log.length > 0) || (soulData.raw_assets?.project_list && soulData.raw_assets.project_list.length > 0)) && (
+          <Card className="bg-card border-border shadow-md">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2 text-muted-foreground">
+                <FileText className="w-4 h-4" />
+                Experience & Projects
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {soulData.raw_assets?.experience_log && soulData.raw_assets.experience_log.length > 0 && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Experience ({soulData.raw_assets.experience_log.length})</p>
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    {soulData.raw_assets.experience_log[0]}
+                  </p>
+                </div>
+              )}
+              {soulData.raw_assets?.project_list && soulData.raw_assets.project_list.length > 0 && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Projects ({soulData.raw_assets.project_list.length})</p>
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    {soulData.raw_assets.project_list[0]}
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Interests */}
+        {soulData.raw_assets?.interests && soulData.raw_assets.interests.length > 0 && (
+          <Card className="bg-card border-border shadow-md">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2 text-muted-foreground">
+                <Target className="w-4 h-4" />
+                Interests
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-1">
+                {soulData.raw_assets.interests.map((interest) => (
+                  <Badge key={interest} variant="outline" className="text-xs">
+                    {interest}
                   </Badge>
                 ))}
               </div>
-            )}
-            {soulData.linkedinUrl && <p className="text-sm text-muted-foreground">LinkedIn: {soulData.linkedinUrl}</p>}
-            {soulData.githubUrl && <p className="text-sm text-muted-foreground">GitHub: {soulData.githubUrl}</p>}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
-        {/* Vibe Check */}
-        <Card className="glass border-border">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm flex items-center gap-2 text-muted-foreground">
-              <MessageCircle className="w-4 h-4" />
-              Voice Signature
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm italic text-muted-foreground line-clamp-3">
-              &ldquo;{soulData.vibeCheck?.slice(0, 200)}...&rdquo;
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Objectives */}
-        <Card className="glass border-border">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm flex items-center gap-2 text-muted-foreground">
-              <Target className="w-4 h-4" />
-              Objectives
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {soulData.objectives?.map((obj) => (
-                <Badge key={obj} className="bg-primary/10 text-primary hover:bg-primary/20">
-                  {OBJECTIVE_LABELS[obj] || obj}
-                </Badge>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        {/* Networking Goals */}
+        {soulData.networking_goals && soulData.networking_goals.length > 0 && (
+          <Card className="bg-card border-border shadow-md">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2 text-muted-foreground">
+                <Target className="w-4 h-4" />
+                Networking Goals
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {soulData.networking_goals.map((goal, index) => (
+                  <p key={index} className="text-sm text-muted-foreground">• {goal}</p>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Filters */}
-        <Card className="glass border-border">
+        <Card className="bg-card border-border shadow-md">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center gap-2 text-muted-foreground">
               <Filter className="w-4 h-4" />

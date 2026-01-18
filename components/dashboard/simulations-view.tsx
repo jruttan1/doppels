@@ -264,7 +264,7 @@ export function SimulationsView() {
         {filteredSimulations.map((simulation) => (
           <Card
             key={simulation.id}
-            className="glass border-border hover:border-primary/30 transition-colors cursor-pointer"
+            className="bg-card border-border shadow-md hover:shadow-lg transition-shadow cursor-pointer"
             onClick={() => setSelectedSimulation(simulation)}
           >
             <CardContent className="p-4 sm:p-6">
@@ -312,10 +312,11 @@ export function SimulationsView() {
 
       {/* Simulation detail dialog */}
       <Dialog open={!!selectedSimulation} onOpenChange={() => setSelectedSimulation(null)}>
-        <DialogContent className="max-w-2xl glass border-border max-h-[90vh]">
+        <DialogContent className="max-w-2xl bg-card border-border shadow-lg rounded-[4px] h-full w-full max-h-full sm:h-auto sm:max-h-[90vh] sm:w-auto sm:max-w-2xl flex flex-col p-0 sm:p-6 fixed inset-0 sm:inset-auto sm:top-[50%] sm:left-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] rounded-none sm:rounded-[4px]">
           {selectedSimulation && (
             <>
-              <DialogHeader>
+              <div className="flex-1 overflow-y-auto px-4 pr-12 sm:pr-4 sm:px-0 pb-4 sm:pb-0">
+                <DialogHeader className="pt-6 sm:pt-0">
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2">
                     <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
@@ -423,7 +424,7 @@ export function SimulationsView() {
               {selectedSimulation.status === "completed" &&
                 selectedSimulation.score &&
                 selectedSimulation.score >= 70 && (
-                  <div className="flex gap-3 mt-4">
+                  <div className="flex gap-3 mt-4 pb-4 sm:pb-0">
                     <Button className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground">
                       Book Coffee Chat
                     </Button>
@@ -432,6 +433,7 @@ export function SimulationsView() {
                     </Button>
                   </div>
                 )}
+              </div>
             </>
           )}
         </DialogContent>

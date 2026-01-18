@@ -439,7 +439,7 @@ export function NetworkFullView() {
 
   return (
     <>
-      <Card className="glass border-border">
+      <Card className="bg-card border-border shadow-md">
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-lg">Network Map</CardTitle>
           <div className="flex items-center gap-2">

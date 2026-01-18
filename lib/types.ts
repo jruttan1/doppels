@@ -127,16 +127,36 @@ export const OBJECTIVES = [
   { id: "find_advisors", label: "Find Advisors", icon: "lightbulb" },
 ] as const
 
-// Onboarding data structure (used during wizard flow)
+// Onboarding data structure (used during wizard flow) - matches JSON schema
 export interface SoulFileData {
-  documents: { name: string; type: string }[]
-  linkedinUrl?: string
-  githubUrl?: string
-  vibeCheck: string
-  objectives: string[]
+  // Identity (may be pre-filled from profile)
+  identity?: {
+    name?: string
+    headline?: string
+    location?: string
+  }
+  // Skills
+  skills_possessed: string[]
+  skills_desired: string[]
+  // Networking goals (free text)
+  networking_goals: string[]
+  // Raw assets
+  raw_assets: {
+    voice_snippet: string
+    experience_log: string[]
+    project_list: string[]
+    interests: string[]
+  }
+  // Filters (for gatekeeper)
   filters: {
     locations: string[]
     skills: string[]
     experienceYears: number
   }
+  // Legacy fields for backward compatibility
+  documents?: { name: string; type: string }[]
+  linkedinUrl?: string
+  githubUrl?: string
+  vibeCheck?: string // Maps to raw_assets.voice_snippet
+  objectives?: string[] // Maps to networking_goals
 }

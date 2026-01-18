@@ -22,13 +22,29 @@ const PROMPTS = [
 ]
 
 export function StepVibeCheck({ soulData, updateSoulData, onNext, onPrev }: StepVibeCheckProps) {
-  const [vibeCheck, setVibeCheck] = useState(soulData.vibeCheck || "")
-  const [selectedPrompt, setSelectedPrompt] = useState(0)
+  const [promptResponses, setPromptResponses] = useState<string[]>(
+    soulData.vibeCheck ? soulData.vibeCheck.split("\n\n---\n\n") : ["", "", ""]
+  )
+
+  const handleResponseChange = (index: number, value: string) => {
+    const newResponses = [...promptResponses]
+    newResponses[index] = value
+    setPromptResponses(newResponses)
+  }
 
   const handleNext = () => {
-    updateSoulData({ vibeCheck })
+    const combinedVibeCheck = promptResponses.join("\n\n---\n\n")
+    updateSoulData({
+      vibeCheck: combinedVibeCheck,
+      raw_assets: {
+        ...soulData.raw_assets,
+        voice_snippet: combinedVibeCheck,
+      },
+    })
     onNext()
   }
+
+  const totalCharacters = promptResponses.reduce((sum, response) => sum + response.length, 0)
 
   return (
     <div className="w-full max-w-2xl">
@@ -44,41 +60,40 @@ export function StepVibeCheck({ soulData, updateSoulData, onNext, onPrev }: Step
       </div>
 
       <div className="space-y-6">
-        {/* Prompt selector */}
-        <div className="flex flex-wrap gap-2 justify-center">
-          {PROMPTS.map((prompt, index) => (
-            <Badge
-              key={index}
-              variant={selectedPrompt === index ? "default" : "outline"}
-              className="cursor-pointer px-3 py-1"
-              onClick={() => setSelectedPrompt(index)}
-            >
-              Prompt {index + 1}
-            </Badge>
-          ))}
-        </div>
+        {PROMPTS.map((prompt, index) => (
+          <Card key={index} className="bg-card border-border shadow-md">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <MessageCircle className="w-5 h-5 text-primary" />
+                Prompt {index + 1}: {prompt}
+              </CardTitle>
+              <CardDescription>Write at least 100 characters. The more natural, the better.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                placeholder="Start typing how you'd actually write..."
+                value={promptResponses[index] || ""}
+                onChange={(e) => handleResponseChange(index, e.target.value)}
+                className="min-h-[200px] bg-secondary/50 border-border resize-none"
+              />
+              <div className="flex justify-between mt-2 text-xs text-muted-foreground">
+                <span>{promptResponses[index]?.length || 0} characters</span>
+                <span>
+                  {(promptResponses[index]?.length || 0) >= 100
+                    ? "Looking good!"
+                    : `${100 - (promptResponses[index]?.length || 0)} more to go`}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
 
-        <Card className="glass border-border">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <MessageCircle className="w-5 h-5 text-primary" />
-              {PROMPTS[selectedPrompt]}
-            </CardTitle>
-            <CardDescription>Write at least 100 characters. The more natural, the better.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Textarea
-              placeholder="Start typing how you'd actually write..."
-              value={vibeCheck}
-              onChange={(e) => setVibeCheck(e.target.value)}
-              className="min-h-[200px] bg-input border-border resize-none"
-            />
-            <div className="flex justify-between mt-2 text-xs text-muted-foreground">
-              <span>{vibeCheck.length} characters</span>
-              <span>{vibeCheck.length >= 100 ? "Looking good!" : `${100 - vibeCheck.length} more to go`}</span>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="p-4 rounded-lg bg-secondary/30 border border-border">
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-muted-foreground">Total characters across all prompts:</span>
+            <span className="font-medium">{totalCharacters}</span>
+          </div>
+        </div>
 
         <div className="flex justify-between pt-4">
           <Button variant="outline" onClick={onPrev} className="gap-2 bg-transparent">
@@ -87,7 +102,7 @@ export function StepVibeCheck({ soulData, updateSoulData, onNext, onPrev }: Step
           </Button>
           <Button
             onClick={handleNext}
-            disabled={vibeCheck.length < 100}
+            disabled={promptResponses.some((response) => (response?.length || 0) < 100)}
             className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
           >
             Continue

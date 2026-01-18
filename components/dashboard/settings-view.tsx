@@ -10,51 +10,12 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { FileText, Github, Linkedin, MessageSquare, Target, Filter, X, Upload, Rocket, Users, Briefcase, DollarSign, Lightbulb, MapPin, Code, Clock } from "lucide-react"
+import { FileText, Github, Linkedin, MessageSquare, Target, Filter, X, Upload, MapPin, Code, Clock, Heart, Briefcase, FolderKanban, Plus } from "lucide-react"
 import type { SoulFileData } from "@/lib/types"
-import { cn } from "@/lib/utils"
-
-const OBJECTIVES = [
-  {
-    id: "cofounder",
-    icon: Rocket,
-    title: "Find a Co-founder",
-    description: "Technical or non-technical partner to build with",
-  },
-  {
-    id: "hire",
-    icon: Users,
-    title: "Hire Talent",
-    description: "Engineers, designers, or operators for your team",
-  },
-  {
-    id: "job",
-    icon: Briefcase,
-    title: "Find a Role",
-    description: "Your next career opportunity",
-  },
-  {
-    id: "invest",
-    icon: DollarSign,
-    title: "Invest / Get Investment",
-    description: "Angel investing or fundraising",
-  },
-  {
-    id: "advise",
-    icon: Lightbulb,
-    title: "Advisory / Mentorship",
-    description: "Give or receive guidance",
-  },
-  {
-    id: "network",
-    icon: Target,
-    title: "General Networking",
-    description: "Meet interesting people in your space",
-  },
-]
 
 const SUGGESTED_LOCATIONS = ["North America", "Europe", "Remote", "San Francisco", "New York", "London", "Singapore"]
-const SUGGESTED_SKILLS = ["React", "Python", "TypeScript", "AI/ML", "Product Management", "Go", "Rust", "Design"]
+const SUGGESTED_SKILLS = ["React", "Python", "TypeScript", "AI/ML", "Product Management", "Go", "Rust", "Design", "Distributed Systems", "Backend Development", "Kubernetes", "LLMs"]
+const SUGGESTED_INTERESTS = ["LLMs", "High-Performance Computing", "Mechanical Keyboards", "Biohacking", "Indie Hacking", "Espresso Brewing", "Open Source", "Startups", "AI/ML", "Distributed Systems", "Developer Tools", "Product Design"]
 
 export function SettingsView() {
   const searchParams = useSearchParams()
@@ -63,11 +24,15 @@ export function SettingsView() {
   
   // Mock data - in real app, fetch from database
   const [soulData, setSoulData] = useState<Partial<SoulFileData>>({
-    documents: [],
-    linkedinUrl: "",
-    githubUrl: "",
-    vibeCheck: "",
-    objectives: [],
+    skills_possessed: [],
+    skills_desired: [],
+    networking_goals: [],
+    raw_assets: {
+      voice_snippet: "",
+      experience_log: [],
+      project_list: [],
+      interests: [],
+    },
     filters: {
       locations: [],
       skills: [],
@@ -77,11 +42,23 @@ export function SettingsView() {
 
   const [linkedinUrl, setLinkedinUrl] = useState(soulData.linkedinUrl || "")
   const [githubUrl, setGithubUrl] = useState(soulData.githubUrl || "")
-  const [vibeCheck, setVibeCheck] = useState(soulData.vibeCheck || "")
-  const [selectedObjectives, setSelectedObjectives] = useState<string[]>(soulData.objectives || [])
+  const [vibeCheck, setVibeCheck] = useState(soulData.raw_assets?.voice_snippet || soulData.vibeCheck || "")
+  const [skillsPossessed, setSkillsPossessed] = useState<string[]>(soulData.skills_possessed || [])
+  const [skillsDesired, setSkillsDesired] = useState<string[]>(soulData.skills_desired || [])
+  const [networkingGoals, setNetworkingGoals] = useState<string[]>(soulData.networking_goals || [])
+  const [experienceLog, setExperienceLog] = useState<string[]>(soulData.raw_assets?.experience_log || [])
+  const [projectList, setProjectList] = useState<string[]>(soulData.raw_assets?.project_list || [])
+  const [interests, setInterests] = useState<string[]>(soulData.raw_assets?.interests || [])
   const [locations, setLocations] = useState<string[]>(soulData.filters?.locations || [])
-  const [skills, setSkills] = useState<string[]>(soulData.filters?.skills || [])
+  const [filterSkills, setFilterSkills] = useState<string[]>(soulData.filters?.skills || [])
   const [experienceYears, setExperienceYears] = useState(soulData.filters?.experienceYears || 0)
+  
+  const [possessedInput, setPossessedInput] = useState("")
+  const [desiredInput, setDesiredInput] = useState("")
+  const [goalInput, setGoalInput] = useState("")
+  const [currentExperience, setCurrentExperience] = useState("")
+  const [currentProject, setCurrentProject] = useState("")
+  const [interestInput, setInterestInput] = useState("")
   const [locationInput, setLocationInput] = useState("")
   const [skillInput, setSkillInput] = useState("")
 
@@ -91,16 +68,70 @@ export function SettingsView() {
     }
   }, [tabParam])
 
-  const toggleObjective = (id: string) => {
-    setSelectedObjectives((prev) => {
-      if (prev.includes(id)) {
-        return prev.filter((o) => o !== id)
-      }
-      if (prev.length >= 3) {
-        return prev
-      }
-      return [...prev, id]
-    })
+  const addPossessedSkill = (skill: string) => {
+    if (skill && !skillsPossessed.includes(skill)) {
+      setSkillsPossessed((prev) => [...prev, skill])
+      setPossessedInput("")
+    }
+  }
+
+  const removePossessedSkill = (skill: string) => {
+    setSkillsPossessed((prev) => prev.filter((s) => s !== skill))
+  }
+
+  const addDesiredSkill = (skill: string) => {
+    if (skill && !skillsDesired.includes(skill)) {
+      setSkillsDesired((prev) => [...prev, skill])
+      setDesiredInput("")
+    }
+  }
+
+  const removeDesiredSkill = (skill: string) => {
+    setSkillsDesired((prev) => prev.filter((s) => s !== skill))
+  }
+
+  const addGoal = () => {
+    if (goalInput.trim() && !networkingGoals.includes(goalInput.trim())) {
+      setNetworkingGoals((prev) => [...prev, goalInput.trim()])
+      setGoalInput("")
+    }
+  }
+
+  const removeGoal = (index: number) => {
+    setNetworkingGoals((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const addExperience = () => {
+    if (currentExperience.trim()) {
+      setExperienceLog((prev) => [...prev, currentExperience.trim()])
+      setCurrentExperience("")
+    }
+  }
+
+  const removeExperience = (index: number) => {
+    setExperienceLog((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const addProject = () => {
+    if (currentProject.trim()) {
+      setProjectList((prev) => [...prev, currentProject.trim()])
+      setCurrentProject("")
+    }
+  }
+
+  const removeProject = (index: number) => {
+    setProjectList((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const addInterest = (interest: string) => {
+    if (interest && !interests.includes(interest)) {
+      setInterests((prev) => [...prev, interest])
+      setInterestInput("")
+    }
+  }
+
+  const removeInterest = (interest: string) => {
+    setInterests((prev) => prev.filter((i) => i !== interest))
   }
 
   const addLocation = (location: string) => {
@@ -114,28 +145,34 @@ export function SettingsView() {
     setLocations((prev) => prev.filter((l) => l !== location))
   }
 
-  const addSkill = (skill: string) => {
-    if (skill && !skills.includes(skill)) {
-      setSkills((prev) => [...prev, skill])
+  const addFilterSkill = (skill: string) => {
+    if (skill && !filterSkills.includes(skill)) {
+      setFilterSkills((prev) => [...prev, skill])
       setSkillInput("")
     }
   }
 
-  const removeSkill = (skill: string) => {
-    setSkills((prev) => prev.filter((s) => s !== skill))
+  const removeFilterSkill = (skill: string) => {
+    setFilterSkills((prev) => prev.filter((s) => s !== skill))
   }
 
   const handleSave = () => {
     // In real app, save to database
     setSoulData({
-      documents: soulData.documents,
       linkedinUrl,
       githubUrl,
-      vibeCheck,
-      objectives: selectedObjectives,
+      skills_possessed: skillsPossessed,
+      skills_desired: skillsDesired,
+      networking_goals: networkingGoals,
+      raw_assets: {
+        voice_snippet: vibeCheck,
+        experience_log: experienceLog,
+        project_list: projectList,
+        interests,
+      },
       filters: {
         locations,
-        skills,
+        skills: filterSkills,
         experienceYears,
       },
     })
@@ -149,13 +186,25 @@ export function SettingsView() {
           <FileText className="w-4 h-4" />
           Documents
         </TabsTrigger>
+        <TabsTrigger value="skills" className="gap-2">
+          <Code className="w-4 h-4" />
+          Skills
+        </TabsTrigger>
         <TabsTrigger value="vibe" className="gap-2">
           <MessageSquare className="w-4 h-4" />
           Vibe Check
         </TabsTrigger>
-        <TabsTrigger value="objectives" className="gap-2">
+        <TabsTrigger value="experience" className="gap-2">
+          <Briefcase className="w-4 h-4" />
+          Experience
+        </TabsTrigger>
+        <TabsTrigger value="interests" className="gap-2">
+          <Heart className="w-4 h-4" />
+          Interests
+        </TabsTrigger>
+        <TabsTrigger value="goals" className="gap-2">
           <Target className="w-4 h-4" />
-          Objectives
+          Goals
         </TabsTrigger>
         <TabsTrigger value="filters" className="gap-2">
           <Filter className="w-4 h-4" />
@@ -237,6 +286,122 @@ export function SettingsView() {
         </Card>
       </TabsContent>
 
+      <TabsContent value="skills" className="space-y-6">
+        <Card className="bg-card border-border shadow-md">
+          <CardHeader>
+            <CardTitle>Skills</CardTitle>
+            <CardDescription>What skills do you have, and what skills are you looking for?</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Code className="w-4 h-4 text-primary" />
+                <Label className="text-base font-medium">Skills You Have</Label>
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Add a skill..."
+                  value={possessedInput}
+                  onChange={(e) => setPossessedInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                      addPossessedSkill(possessedInput)
+                    }
+                  }}
+                  className="bg-secondary/50"
+                />
+                <Button onClick={() => addPossessedSkill(possessedInput)} variant="outline" className="bg-transparent">
+                  Add
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {skillsPossessed.map((skill) => (
+                  <Badge key={skill} variant="outline" className="gap-1">
+                    {skill}
+                    <button
+                      onClick={() => removePossessedSkill(skill)}
+                      className="ml-1 hover:text-destructive"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {SUGGESTED_SKILLS.filter((s) => !skillsPossessed.includes(s)).map((skill) => (
+                  <Button
+                    key={skill}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addPossessedSkill(skill)}
+                    className="bg-transparent text-xs"
+                  >
+                    + {skill}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Target className="w-4 h-4 text-primary" />
+                <Label className="text-base font-medium">Skills You're Looking For</Label>
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Add a skill..."
+                  value={desiredInput}
+                  onChange={(e) => setDesiredInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                      addDesiredSkill(desiredInput)
+                    }
+                  }}
+                  className="bg-secondary/50"
+                />
+                <Button onClick={() => addDesiredSkill(desiredInput)} variant="outline" className="bg-transparent">
+                  Add
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {skillsDesired.map((skill) => (
+                  <Badge key={skill} variant="outline" className="gap-1">
+                    {skill}
+                    <button
+                      onClick={() => removeDesiredSkill(skill)}
+                      className="ml-1 hover:text-destructive"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {SUGGESTED_SKILLS.filter((s) => !skillsDesired.includes(s)).map((skill) => (
+                  <Button
+                    key={skill}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addDesiredSkill(skill)}
+                    className="bg-transparent text-xs"
+                  >
+                    + {skill}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <Button onClick={handleSave} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+              Save Changes
+            </Button>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
       <TabsContent value="vibe" className="space-y-6">
         <Card className="bg-card border-border shadow-md">
           <CardHeader>
@@ -265,51 +430,190 @@ export function SettingsView() {
         </Card>
       </TabsContent>
 
-      <TabsContent value="objectives" className="space-y-6">
+      <TabsContent value="experience" className="space-y-6">
         <Card className="bg-card border-border shadow-md">
           <CardHeader>
-            <CardTitle>Networking Objectives</CardTitle>
-            <CardDescription>Select up to 3 objectives for your Doppel to focus on.</CardDescription>
+            <CardTitle>Experience & Projects</CardTitle>
+            <CardDescription>Share your work history and notable projects.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Briefcase className="w-4 h-4 text-primary" />
+                <Label className="text-base font-medium">Experience</Label>
+              </div>
+              <div className="space-y-2">
+                <Textarea
+                  placeholder="e.g., Senior Backend Engineer @ Stripe (2020-2023) - Core Payments Team. Led the migration of the legacy payment intents API..."
+                  value={currentExperience}
+                  onChange={(e) => setCurrentExperience(e.target.value)}
+                  className="min-h-[100px] bg-secondary/50 resize-none"
+                />
+                <Button onClick={addExperience} variant="outline" size="sm" className="gap-2 bg-transparent">
+                  <Plus className="w-4 h-4" />
+                  Add Experience
+                </Button>
+              </div>
+              {experienceLog.length > 0 && (
+                <div className="space-y-2">
+                  {experienceLog.map((exp, index) => (
+                    <div key={index} className="flex items-start gap-2 p-3 rounded-lg bg-secondary/30 border border-border">
+                      <p className="flex-1 text-sm">{exp}</p>
+                      <button
+                        onClick={() => removeExperience(index)}
+                        className="p-1 hover:bg-secondary rounded"
+                      >
+                        <X className="w-4 h-4 text-muted-foreground" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <Separator />
+
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <FolderKanban className="w-4 h-4 text-primary" />
+                <Label className="text-base font-medium">Projects</Label>
+              </div>
+              <div className="space-y-2">
+                <Textarea
+                  placeholder="e.g., Repo: rocket-rs (Rust) - A high performance, type-safe web server template designed for speed..."
+                  value={currentProject}
+                  onChange={(e) => setCurrentProject(e.target.value)}
+                  className="min-h-[100px] bg-secondary/50 resize-none"
+                />
+                <Button onClick={addProject} variant="outline" size="sm" className="gap-2 bg-transparent">
+                  <Plus className="w-4 h-4" />
+                  Add Project
+                </Button>
+              </div>
+              {projectList.length > 0 && (
+                <div className="space-y-2">
+                  {projectList.map((project, index) => (
+                    <div key={index} className="flex items-start gap-2 p-3 rounded-lg bg-secondary/30 border border-border">
+                      <p className="flex-1 text-sm">{project}</p>
+                      <button
+                        onClick={() => removeProject(index)}
+                        className="p-1 hover:bg-secondary rounded"
+                      >
+                        <X className="w-4 h-4 text-muted-foreground" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <Button onClick={handleSave} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+              Save Changes
+            </Button>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="interests" className="space-y-6">
+        <Card className="bg-card border-border shadow-md">
+          <CardHeader>
+            <CardTitle>Interests</CardTitle>
+            <CardDescription>Share your interests and hobbies.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid sm:grid-cols-2 gap-4">
-              {OBJECTIVES.map((objective) => {
-                const Icon = objective.icon
-                const isSelected = selectedObjectives.includes(objective.id)
-                return (
+            <div className="flex gap-2">
+              <Input
+                placeholder="Add an interest..."
+                value={interestInput}
+                onChange={(e) => setInterestInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault()
+                    addInterest(interestInput)
+                  }
+                }}
+                className="bg-secondary/50"
+              />
+              <Button onClick={() => addInterest(interestInput)} variant="outline" className="bg-transparent">
+                Add
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {interests.map((interest) => (
+                <Badge key={interest} variant="outline" className="gap-1">
+                  {interest}
                   <button
-                    key={objective.id}
-                    onClick={() => toggleObjective(objective.id)}
-                    disabled={!isSelected && selectedObjectives.length >= 3}
-                    className={cn(
-                      "p-4 rounded-lg border-2 text-left transition-all",
-                      isSelected
-                        ? "border-primary bg-primary/10"
-                        : "border-border bg-card hover:border-primary/50",
-                      !isSelected && selectedObjectives.length >= 3 && "opacity-50 cursor-not-allowed",
-                    )}
+                    onClick={() => removeInterest(interest)}
+                    className="ml-1 hover:text-destructive"
                   >
-                    <div className="flex items-start gap-3">
-                      <div className={cn("p-2 rounded-lg", isSelected ? "bg-primary/20" : "bg-secondary")}>
-                        <Icon className={cn("w-5 h-5", isSelected ? "text-primary" : "text-muted-foreground")} />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-medium mb-1">{objective.title}</h3>
-                        <p className="text-sm text-muted-foreground">{objective.description}</p>
-                      </div>
-                      {isSelected && (
-                        <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center shrink-0">
-                          <span className="text-xs text-primary-foreground">✓</span>
-                        </div>
-                      )}
-                    </div>
+                    <X className="w-3 h-3" />
                   </button>
-                )
-              })}
+                </Badge>
+              ))}
             </div>
-            <div className="text-sm text-muted-foreground">
-              {selectedObjectives.length} of 3 selected
+            <div>
+              <Label className="text-xs text-muted-foreground mb-2 block">Suggestions</Label>
+              <div className="flex flex-wrap gap-2">
+                {SUGGESTED_INTERESTS.filter((i) => !interests.includes(i)).map((interest) => (
+                  <Button
+                    key={interest}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addInterest(interest)}
+                    className="bg-transparent text-xs"
+                  >
+                    + {interest}
+                  </Button>
+                ))}
+              </div>
             </div>
+            <Button onClick={handleSave} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+              Save Changes
+            </Button>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="goals" className="space-y-6">
+        <Card className="bg-card border-border shadow-md">
+          <CardHeader>
+            <CardTitle>Networking Goals</CardTitle>
+            <CardDescription>Describe what you're looking for in your connections. Be specific about your goals.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Input
+                placeholder="e.g., Find a technical co-founder who has deep experience with Rust and distributed systems"
+                value={goalInput}
+                onChange={(e) => setGoalInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault()
+                    addGoal()
+                  }
+                }}
+                className="bg-secondary/50"
+              />
+              <Button onClick={addGoal} variant="outline" size="sm" className="gap-2 bg-transparent">
+                <Plus className="w-4 h-4" />
+                Add Goal
+              </Button>
+            </div>
+            {networkingGoals.length > 0 && (
+              <div className="space-y-2">
+                {networkingGoals.map((goal, index) => (
+                  <div key={index} className="flex items-start gap-2 p-3 rounded-lg bg-secondary/30 border border-border">
+                    <p className="flex-1 text-sm">{goal}</p>
+                    <button
+                      onClick={() => removeGoal(index)}
+                      className="p-1 hover:bg-secondary rounded"
+                    >
+                      <X className="w-4 h-4 text-muted-foreground" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
             <Button onClick={handleSave} className="bg-primary hover:bg-primary/90 text-primary-foreground">
               Save Changes
             </Button>
@@ -382,11 +686,11 @@ export function SettingsView() {
                 <Label className="text-base font-medium">Required Skills</Label>
               </div>
               <div className="flex flex-wrap gap-2 mb-3">
-                {skills.map((skill) => (
+                {filterSkills.map((skill) => (
                   <Badge key={skill} variant="outline" className="gap-1">
                     {skill}
                     <button
-                      onClick={() => removeSkill(skill)}
+                      onClick={() => removeFilterSkill(skill)}
                       className="ml-1 hover:text-destructive"
                     >
                       <X className="w-3 h-3" />
@@ -402,22 +706,22 @@ export function SettingsView() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault()
-                      addSkill(skillInput)
+                      addFilterSkill(skillInput)
                     }
                   }}
                   className="bg-secondary/50"
                 />
-                <Button onClick={() => addSkill(skillInput)} variant="outline" className="bg-transparent">
+                <Button onClick={() => addFilterSkill(skillInput)} variant="outline" className="bg-transparent">
                   Add
                 </Button>
               </div>
               <div className="flex flex-wrap gap-2">
-                {SUGGESTED_SKILLS.filter((skill) => !skills.includes(skill)).map((skill) => (
+                {SUGGESTED_SKILLS.filter((skill) => !filterSkills.includes(skill)).map((skill) => (
                   <Button
                     key={skill}
                     variant="outline"
                     size="sm"
-                    onClick={() => addSkill(skill)}
+                    onClick={() => addFilterSkill(skill)}
                     className="bg-transparent text-xs"
                   >
                     + {skill}

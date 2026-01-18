@@ -23,7 +23,6 @@ import {
   LogOut,
   Menu,
   X,
-  Zap,
   Search,
 } from "lucide-react"
 import { useState } from "react"
@@ -110,21 +109,6 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               )
             })}
           </nav>
-
-          {/* Agent status card */}
-          <div className="px-3 py-4 border-t border-border">
-            <div className="p-4 rounded-xl bg-gradient-to-br from-primary/10 to-accent/10 border border-primary/20">
-              <div className="flex items-center gap-2 mb-2">
-                <Zap className="w-4 h-4 text-primary" />
-                <span className="text-sm font-medium">Agent Active</span>
-              </div>
-              <p className="text-xs text-muted-foreground mb-3">Your Doppel is networking 24/7</p>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                <span className="text-xs text-green-500">Running simulations</span>
-              </div>
-            </div>
-          </div>
 
           {/* User menu */}
           <div className="px-3 py-4 border-t border-border">
