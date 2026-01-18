@@ -16,7 +16,7 @@ export default async function DashboardPage() {
         <div className="flex-shrink-0 mb-3">
           <div className="flex items-center justify-between mb-2">
             <div className="flex flex-col gap-1">
-              <h1 className="text-3xl font-thin bg-gradient-to-r from-foreground via-foreground to-primary bg-clip-text">
+              <h1 className="text-3xl font-medium bg-gradient-to-r from-foreground via-foreground to-primary bg-clip-text">
                 Dashboard
               </h1>
               <p className="text-sm text-muted-foreground">
@@ -31,7 +31,7 @@ export default async function DashboardPage() {
 
         <div className="flex-1 min-h-0 overflow-hidden">
           <div className="h-full flex flex-col">
-            <h2 className="text-xl font-thin mb-3">Network Map</h2>
+            <h2 className="text-xl font-medium mb-3">Network Map</h2>
             <div className="flex-1 min-h-0">
               <NetworkGraph />
             </div>
