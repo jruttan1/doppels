@@ -11,16 +11,15 @@ export const maxDuration = 60;
 // PDF text extraction using pdf-parse
 async function extractPdfText(base64: string): Promise<string | null> {
   try {
-    const { PDFParse } = await import('pdf-parse');
+    const pdfParse = (await import('pdf-parse')).default;
     const buffer = Buffer.from(base64, 'base64');
     
-    // PDFParse accepts data as Uint8Array or Buffer
-    const parser = new PDFParse({ data: buffer });
-    const result = await parser.getText();
+    // pdf-parse accepts a Buffer and returns parsed data
+    const data = await pdfParse(buffer);
     
-    // Extract text from pages
-    const text = result.pages?.map((p: { text: string }) => p.text).join('\n\n').trim() || result.text || '';
-    return text || null;
+    // Extract text - pdf-parse returns text directly or in pages
+    const text = data.text || '';
+    return text.trim() || null;
   } catch (e: any) {
     console.error("PDF parse error:", e.message, e.stack);
     return null;
