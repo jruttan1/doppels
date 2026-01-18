@@ -96,7 +96,7 @@ export function SimulationPreview() {
             <MessageSquare className="w-5 h-5 text-primary" />
             Live Simulation
           </CardTitle>
-          <Badge className="bg-green-500/10 text-green-500 animate-pulse">In Progress</Badge>
+          <Badge className="bg-teal-500/10 text-teal-500 animate-pulse">In Progress</Badge>
         </div>
         <div className="flex items-center gap-4 mt-3">
           <div className="flex items-center gap-2">

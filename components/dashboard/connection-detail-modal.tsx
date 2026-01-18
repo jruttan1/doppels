@@ -54,7 +54,7 @@ export function ConnectionDetailModal({ connection, onClose }: ConnectionDetailM
                       .join("")}
                   </AvatarFallback>
                 </Avatar>
-                <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-green-500 border-2 border-card flex items-center justify-center">
+                <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-teal-500 border-2 border-card flex items-center justify-center">
                   <Sparkles className="w-3 h-3 text-white" />
                 </div>
               </div>
@@ -62,7 +62,7 @@ export function ConnectionDetailModal({ connection, onClose }: ConnectionDetailM
                 <DialogTitle className="text-xl">{connection.name}</DialogTitle>
                 <DialogDescription className="text-sm">{connection.role}</DialogDescription>
                 <div className="flex items-center gap-2 mt-2">
-                  <Badge className="bg-green-500/10 text-green-500 hover:bg-green-500/20">
+                  <Badge className="bg-teal-500/10 text-teal-500 hover:bg-teal-500/20">
                     {connection.compatibility}% Match
                   </Badge>
                   <span className="text-xs text-muted-foreground">{connection.matchedAt}</span>

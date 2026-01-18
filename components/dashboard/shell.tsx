@@ -22,10 +22,8 @@ import {
   Menu,
   X,
   Search,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react"
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Input } from "@/components/ui/input"
 import { createClient } from "@/lib/supabase/client"
 import { ConnectionsSimulationsSidebar } from "./connections-simulations-sidebar"
@@ -45,28 +43,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [desktopMenuOpen, setDesktopMenuOpen] = useState(false)
   const [userData, setUserData] = useState<UserData>({ name: null, email: null })
-  const [sidebarWidth, setSidebarWidth] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('sidebar-width')
-      return saved ? parseInt(saved, 10) : 256 // 256px = w-64
-    }
-    return 256
-  })
-  const [isResizing, setIsResizing] = useState(false)
-  const [isDesktop, setIsDesktop] = useState(false)
-  const resizeRef = useRef<HTMLDivElement>(null)
 
   const supabase = createClient()
-
-  // Check if desktop on mount and resize
-  useEffect(() => {
-    const checkDesktop = () => {
-      setIsDesktop(window.innerWidth >= 1024)
-    }
-    checkDesktop()
-    window.addEventListener('resize', checkDesktop)
-    return () => window.removeEventListener('resize', checkDesktop)
-  }, [])
 
   const fetchUserData = useCallback(async () => {
     try {
@@ -93,33 +71,6 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     fetchUserData()
   }, [fetchUserData])
-
-  // Handle sidebar resize
-  useEffect(() => {
-    if (!isResizing) return
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const newWidth = Math.max(200, Math.min(600, e.clientX))
-      setSidebarWidth(newWidth)
-      localStorage.setItem('sidebar-width', newWidth.toString())
-    }
-
-    const handleMouseUp = () => {
-      setIsResizing(false)
-    }
-
-    document.addEventListener('mousemove', handleMouseMove)
-    document.addEventListener('mouseup', handleMouseUp)
-    document.body.style.cursor = 'col-resize'
-    document.body.style.userSelect = 'none'
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
-      document.body.style.cursor = ''
-      document.body.style.userSelect = ''
-    }
-  }, [isResizing])
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -166,18 +117,16 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed top-0 left-0 z-40 h-screen border-r border-border bg-card transition-transform lg:translate-x-0 shrink-0",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full",
-          !isResizing && "transition-all"
+          "fixed top-0 left-0 z-40 h-screen w-80 border-r border-border bg-card transition-transform lg:translate-x-0 shrink-0",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
-        style={{ width: `${sidebarWidth}px` }}
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="h-12 flex items-center px-5 border-b border-border">
-            <Link href="/dashboard" className="flex items-center gap-1">
-              <Image src="/logo.svg" alt="Doppel" width={40} height={40} />
-              <span className="text-xl font-bold font-serif">Doppel</span>
+          <div className="h-12 flex items-center px-4 border-b border-border">
+            <Link href="/dashboard" className="flex items-center gap-1.5">
+              <Image src="/logo.svg" alt="Doppel" width={32} height={32} />
+              <span className="text-lg font-bold font-serif">Doppel</span>
             </Link>
           </div>
 
@@ -235,27 +184,6 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             </DropdownMenu>
           </div>
         </div>
-        {/* Resize handle - Desktop only */}
-        <div
-          ref={resizeRef}
-          className="hidden lg:block absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/20 transition-colors z-50 group"
-          onMouseDown={(e) => {
-            e.preventDefault()
-            setIsResizing(true)
-          }}
-        >
-          <div className="absolute inset-y-0 -right-1 w-3" />
-          {/* Grip indicator */}
-          <div className="absolute top-1/2 right-0 -translate-y-1/2 translate-x-1/2 flex items-center gap-0.5">
-            <ChevronLeft className="w-2.5 h-2.5 text-muted-foreground" />
-            <div className="flex flex-col gap-0.5">
-              <div className="w-0.5 h-1.5 bg-border rounded-full" />
-              <div className="w-0.5 h-1.5 bg-border rounded-full" />
-              <div className="w-0.5 h-1.5 bg-border rounded-full" />
-            </div>
-            <ChevronRight className="w-2.5 h-2.5 text-muted-foreground" />
-          </div>
-        </div>
       </aside>
 
       {/* Overlay for mobile */}
@@ -268,11 +196,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
       {/* Main content */}
       <main 
-        className={cn(
-          "pt-14 lg:pt-0 h-screen flex flex-col overflow-hidden min-w-0",
-          !isResizing && "transition-[padding-left]"
-        )}
-        style={{ paddingLeft: isDesktop ? `${sidebarWidth}px` : undefined }}
+        className="pt-14 lg:pt-0 lg:pl-80 h-screen flex flex-col overflow-hidden min-w-0"
       >
         <div className="hidden lg:flex items-center justify-between px-6 h-12 border-b border-border bg-card/50 backdrop-blur-sm shrink-0 z-20">
           <div className="relative">

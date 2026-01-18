@@ -223,7 +223,7 @@ export function NetworkDemo() {
           {/* Legend */}
           <div className="absolute bottom-4 left-4 flex flex-col gap-2 glass px-4 py-3 rounded-lg">
             <div className="flex items-center gap-2 text-xs">
-              <div className="w-3 h-3 rounded-full bg-green-500" />
+              <div className="w-3 h-3 rounded-full bg-teal-500" />
               <span className="text-muted-foreground">High Match</span>
             </div>
             <div className="flex items-center gap-2 text-xs">
@@ -245,7 +245,7 @@ export function NetworkDemo() {
               <p className="font-medium text-sm">{hoveredNode.name}</p>
               <p className="text-xs text-muted-foreground">{hoveredNode.role}</p>
               {hoveredNode.compatibility && (
-                <p className="text-xs text-green-400 mt-1">{hoveredNode.compatibility}% compatibility</p>
+                <p className="text-xs text-teal-400 mt-1">{hoveredNode.compatibility}% compatibility</p>
               )}
             </div>
           )}

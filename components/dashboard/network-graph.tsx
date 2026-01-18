@@ -379,7 +379,7 @@ export function NetworkGraph() {
         case "connected":
           return { fill: "rgba(168, 85, 247, 0.9)", glow: "rgba(168, 85, 247, 0.5)", size: 16 }
         case "matched":
-          return { fill: "rgba(34, 197, 94, 0.9)", glow: "rgba(34, 197, 94, 0.5)", size: 14 }
+          return { fill: "rgba(20, 184, 166, 0.9)", glow: "rgba(20, 184, 166, 0.5)", size: 14 }
         case "simulated":
           return { fill: "rgba(45, 212, 191, 0.7)", glow: "rgba(45, 212, 191, 0.3)", size: 10 }
         default:
@@ -466,7 +466,7 @@ export function NetworkGraph() {
             if (node.status === "connected") {
               connectionColor = "rgba(168, 85, 247, 0.4)"
             } else {
-              connectionColor = "rgba(34, 197, 94, 0.4)"
+              connectionColor = "rgba(20, 184, 166, 0.4)"
             }
           }
           // Medium connections: connected/matched cross-connections
@@ -730,7 +730,7 @@ export function NetworkGraph() {
               </div>
               <div>
                 <p className="text-muted-foreground text-[10px] leading-tight">High Matches</p>
-                <p className="font-bold text-sm text-green-500 leading-tight">
+                  <p className="font-bold text-sm text-teal-500 leading-tight">
                   {nodes.filter((n) => n.status === "matched").length}
                 </p>
               </div>
@@ -756,7 +756,7 @@ export function NetworkGraph() {
                 <span className="text-muted-foreground">Connected</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-green-500" />
+                <div className="w-3 h-3 rounded-full bg-teal-500" />
                 <span className="text-muted-foreground">Match</span>
               </div>
               <div className="flex items-center gap-1.5">
@@ -788,7 +788,7 @@ export function NetworkGraph() {
                   ))}
                 </div>
                 {hoveredNode.compatibility && (
-                  <Badge className="mt-2 bg-green-500/10 text-green-500 border-green-500/30">
+                  <Badge className="mt-2 bg-teal-500/10 text-teal-500 border-teal-500/30">
                     {hoveredNode.compatibility}% match
                   </Badge>
                 )}
@@ -822,7 +822,7 @@ export function NetworkGraph() {
                         </AvatarFallback>
                       </Avatar>
                       {selectedNode.status === "matched" && selectedNode.id !== currentUserId && (
-                        <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-green-500 border-2 border-card flex items-center justify-center">
+                        <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-teal-500 border-2 border-card flex items-center justify-center">
                           <Sparkles className="w-3 h-3 text-white" />
                         </div>
                       )}
@@ -835,7 +835,7 @@ export function NetworkGraph() {
                       {selectedNode.id !== currentUserId && (
                         <div className="flex items-center gap-2 mt-2">
                           {selectedNode.compatibility && (
-                            <Badge className="bg-green-500/10 text-green-500">{selectedNode.compatibility}% Match</Badge>
+                            <Badge className="bg-teal-500/10 text-teal-500">{selectedNode.compatibility}% Match</Badge>
                           )}
                           <Badge variant="secondary" className="capitalize">
                             {selectedNode.status}

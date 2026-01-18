@@ -43,7 +43,7 @@ export function StepReview({ soulData, onPrev }: StepReviewProps) {
           googleCalendarUrl: soulData.googleCalendarUrl || null,
           networkingGoals: soulData.networking_goals || [],
           voiceSignature: soulData.raw_assets?.voice_snippet || null,
-          skills: soulData.raw_assets?.interests || [], // interests = skills
+          skills: soulData.skills_possessed || [], // interests = skills
           skillsDesired: soulData.hiringSkillsDesired || [],
           locationDesired: soulData.hiringLocationsDesired || [],
         }),

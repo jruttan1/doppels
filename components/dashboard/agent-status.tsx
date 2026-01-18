@@ -75,7 +75,7 @@ export function AgentStatus() {
                 <h3 className="font-semibold">Your Doppel</h3>
                 <Badge
                   variant={isActive ? "default" : "secondary"}
-                  className={isActive ? "bg-green-500/10 text-green-500 hover:bg-green-500/20" : ""}
+                  className={isActive ? "bg-teal-500/10 text-teal-500 hover:bg-teal-500/20" : ""}
                 >
                   {isActive ? "Active" : "Paused"}
                 </Badge>

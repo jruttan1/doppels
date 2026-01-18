@@ -164,14 +164,14 @@ export function ConnectionsList() {
                               .join("")}
                           </AvatarFallback>
                         </Avatar>
-                        <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-green-500 border-2 border-card flex items-center justify-center">
+                        <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-teal-500 border-2 border-card flex items-center justify-center">
                           <Sparkles className="w-2 h-2 text-white" />
                         </div>
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
                           <p className="font-medium text-sm truncate">{connection.name}</p>
-                          <Badge variant="outline" className="shrink-0 text-green-500 border-green-500/30 text-xs">
+                          <Badge variant="outline" className="shrink-0 text-teal-500 border-teal-500/30 text-xs">
                             {connection.compatibility}%
                           </Badge>
                         </div>

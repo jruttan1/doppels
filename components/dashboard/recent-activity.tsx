@@ -17,7 +17,7 @@ interface ActivityItem {
 const getActivityIcon = (type: ActivityItem["type"]) => {
   switch (type) {
     case "match_found":
-      return <Zap className="w-4 h-4 text-green-500" />
+      return <Zap className="w-4 h-4 text-teal-500" />
     case "simulation_complete":
       return <MessageSquare className="w-4 h-4 text-primary" />
     case "connection_made":
@@ -34,7 +34,7 @@ const getActivityIcon = (type: ActivityItem["type"]) => {
 const getActivityBadge = (type: ActivityItem["type"]) => {
   switch (type) {
     case "match_found":
-      return <Badge className="bg-green-500/10 text-green-500 text-xs">Match</Badge>
+      return <Badge className="bg-teal-500/10 text-teal-500 text-xs">Match</Badge>
     case "simulation_complete":
       return <Badge className="bg-primary/10 text-primary text-xs">Simulation</Badge>
     case "connection_made":

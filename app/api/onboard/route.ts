@@ -8,18 +8,21 @@ const supabase = createClient(
 
 export const maxDuration = 60;
 
-// PDF text extraction using pdf-parse node build
+// PDF text extraction using pdf-parse
 async function extractPdfText(base64: string): Promise<string | null> {
   try {
-    // Use the node-specific build which handles worker setup
-    const { PDFParse } = await import('pdf-parse/dist/node/esm/index.js');
+    const { PDFParse } = await import('pdf-parse');
     const buffer = Buffer.from(base64, 'base64');
-    const parser = new PDFParse({ data: new Uint8Array(buffer) });
+    
+    // PDFParse accepts data as Uint8Array or Buffer
+    const parser = new PDFParse({ data: buffer });
     const result = await parser.getText();
-    const text = result.pages.map((p: { text: string }) => p.text).join('\n\n').trim();
+    
+    // Extract text from pages
+    const text = result.pages?.map((p: { text: string }) => p.text).join('\n\n').trim() || result.text || '';
     return text || null;
   } catch (e: any) {
-    console.error("PDF parse error:", e.message);
+    console.error("PDF parse error:", e.message, e.stack);
     return null;
   }
 }

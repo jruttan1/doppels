@@ -60,7 +60,7 @@ export function ConnectionsSimulationsSidebar() {
           .limit(50)
 
         if (simError) {
-          console.error("Error fetching simulations:", simError)
+          // Error fetching simulations - silently fail
           return
         }
 
@@ -78,7 +78,7 @@ export function ConnectionsSimulationsSidebar() {
           .in('id', userIds)
 
         if (usersError || !users) {
-          console.error("Error fetching user details:", usersError)
+          // Error fetching user details - silently fail
           return
         }
 
@@ -183,7 +183,7 @@ export function ConnectionsSimulationsSidebar() {
         setConnections(connectionsList)
         setSimulations(simulationsList)
       } catch (error) {
-        console.error("Error in fetchData:", error)
+        // Error in fetchData - silently fail
       }
     }
 
@@ -198,7 +198,7 @@ export function ConnectionsSimulationsSidebar() {
   const getStatusIcon = (status: Simulation["status"]) => {
     switch (status) {
       case "completed":
-        return <CheckCircle2 className="w-3 h-3 text-green-500" />
+        return <CheckCircle2 className="w-3 h-3 text-teal-500" />
       case "in_progress":
         return <Clock className="w-3 h-3 text-yellow-500 animate-pulse" />
       case "failed":
@@ -210,7 +210,7 @@ export function ConnectionsSimulationsSidebar() {
     switch (status) {
       case "completed":
         return (
-          <Badge className={score && score >= 70 ? "bg-green-500/10 text-green-500 text-xs" : "bg-muted text-muted-foreground text-xs"}>
+          <Badge className={score && score >= 70 ? "bg-teal-500/10 text-teal-500 text-xs" : "bg-muted text-muted-foreground text-xs"}>
             {score}%
           </Badge>
         )
@@ -256,14 +256,14 @@ export function ConnectionsSimulationsSidebar() {
                               .join("")}
                           </AvatarFallback>
                         </Avatar>
-                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-500 border-2 border-card flex items-center justify-center">
+                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-teal-500 border-2 border-card flex items-center justify-center">
                           <Sparkles className="w-1.5 h-1.5 text-white" />
                         </div>
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-1">
                           <p className="font-medium text-xs truncate">{connection.name}</p>
-                          <Badge variant="outline" className="shrink-0 text-green-500 border-green-500/30 text-[10px] px-1">
+                          <Badge variant="outline" className="shrink-0 text-teal-500 border-teal-500/30 text-[10px] px-1">
                             {connection.compatibility}%
                           </Badge>
                         </div>

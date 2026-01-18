@@ -67,7 +67,7 @@ export function StatsCards() {
             <div className="flex items-center justify-between mb-3">
               <stat.icon className="w-5 h-5 text-teal-500 dark:text-teal-400 group-hover:scale-110 transition-transform" />
               {stat.trend > 0 && (
-                <div className="flex items-center gap-1 text-xs text-green-500">
+                <div className="flex items-center gap-1 text-xs text-teal-500">
                   <TrendingUp className="w-3 h-3" />
                   {stat.trend}%
                 </div>
