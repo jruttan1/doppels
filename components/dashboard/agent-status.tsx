@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Play, Pause, Sparkles, Loader2 } from "lucide-react"
+import { Play, Pause } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
 // Auto-simulation interval in milliseconds (30 seconds)
@@ -120,8 +120,6 @@ export function AgentStatus() {
     }
   }, [])
 
-  const handleRunSimulation = useCallback(() => runSimulation(false), [runSimulation])
-
   // Auto-simulation effect
   useEffect(() => {
     isMountedRef.current = true
@@ -213,35 +211,12 @@ export function AgentStatus() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
-            <Button
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                handleRunSimulation()
-              }}
-              disabled={isRunningSimulation}
-              size="sm"
-              className="gap-2 bg-accent hover:bg-accent/90 text-accent-foreground border-0 shadow-sm"
-              type="button"
-            >
-              {isRunningSimulation ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Running Simulations...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4" />
-                  Run All Simulations
-                </>
-              )}
-            </Button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setIsActive(!isActive)}
-              className={`flex-1 sm:flex-none gap-2 bg-secondary/50 hover:bg-secondary border-border/50 text-foreground hover:text-foreground`}
+              className="gap-2 bg-secondary/50 hover:bg-secondary border-border/50 text-foreground hover:text-foreground"
             >
               {isActive ? (
                 <>
