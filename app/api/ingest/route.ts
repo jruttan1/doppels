@@ -228,8 +228,7 @@ OUTPUT SCHEMA:
           autoConnectUrl = `${url.protocol}//${url.host}/api/simulation/auto-connect`;
           console.log(`[Auto-connect] Constructed URL from request: ${autoConnectUrl}`);
         } catch (urlError) {
-          // Fallback to environment variable or localhost
-          const fallbackUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+          const fallbackUrl = process.env.NEXT_PUBLIC_SITE_URL
           autoConnectUrl = `${fallbackUrl}/api/simulation/auto-connect`;
           console.log(`[Auto-connect] Using fallback URL: ${autoConnectUrl}`);
         }
