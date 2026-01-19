@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { ChevronRight, Sparkles, MessageSquare, CheckCircle2, XCircle, Clock, ArrowRight, Calendar } from "lucide-react"
+import { ChevronRight, Sparkles, MessageSquare, CheckCircle2, XCircle, Clock, ArrowRight, Calendar, Loader2 } from "lucide-react"
 import { ConnectionDetailModal } from "./connection-detail-modal"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -44,6 +44,7 @@ export function ConnectionsSimulationsSidebar() {
   const [selectedSimulation, setSelectedSimulation] = useState<Simulation | null>(null)
   const [activeTab, setActiveTab] = useState<"connections" | "simulations">("connections")
   const [connections, setConnections] = useState<ConnectionPreview[]>([])
+  const [simulationsLoaded, setSimulationsLoaded] = useState(false);
   const [simulations, setSimulations] = useState<Simulation[]>([])
   const [currentUserName, setCurrentUserName] = useState<string>("You")
   const [sendingCoffeeChat, setSendingCoffeeChat] = useState(false)
@@ -219,8 +220,10 @@ export function ConnectionsSimulationsSidebar() {
 
         setConnections(connectionsList)
         setSimulations(simulationsList)
+        setSimulationsLoaded(true)
       } catch (error) {
         // Error in fetchData - silently fail
+        setSimulationsLoaded(true)
       }
     }
 
@@ -236,8 +239,6 @@ export function ConnectionsSimulationsSidebar() {
 
   const matchedConnections = connections.filter((c) => c.status === "matched")
   const connectedConnections = connections.filter((c) => c.status === "connected")
-
-  // Function definitions continue below
 
   const getStatusIcon = (status: Simulation["status"]) => {
     switch (status) {
@@ -263,6 +264,16 @@ export function ConnectionsSimulationsSidebar() {
       case "failed":
         return <Badge variant="secondary" className="text-xs">No</Badge>
     }
+  }
+
+  // Show loader while initially loading
+  if (!simulationsLoaded) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-2">
+        <Loader2 className="w-4 h-4 animate-spin" />
+        <p className="text-sm text-muted-foreground">Loading simulations...</p>
+      </div>
+    )
   }
 
   return (

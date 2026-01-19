@@ -104,58 +104,59 @@ export async function POST(req: Request) {
 
     console.log("Onboarding data saved, triggering ingestion...");
 
-    // Trigger ingestion (don't await - let it run in background)
-    // Use request URL to construct proper endpoint (works in all environments)
+    // Trigger ingestion - MUST await for serverless environments (Vercel)
+    // Fire-and-forget doesn't work because the serverless function terminates after response
+    let ingestUrl: string;
     try {
       const url = new URL(req.url);
-      const baseUrl = `${url.protocol}//${url.host}`;
-      const ingestUrl = `${baseUrl}/api/ingest`;
+      ingestUrl = `${url.protocol}//${url.host}/api/ingest`;
+    } catch (urlError: any) {
+      console.error("Failed to construct ingestion URL:", urlError.message);
+      // Fallback to environment variable
+      const fallbackBase = process.env.NEXT_PUBLIC_SITE_URL 
+        || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
       
-      console.log(`Triggering ingestion at: ${ingestUrl}`);
-      
-      fetch(ingestUrl, {
+      if (!fallbackBase) {
+        console.error("No valid ingestion URL available");
+        return NextResponse.json({ success: true, warning: "Ingestion not triggered - manual trigger required" });
+      }
+      ingestUrl = `${fallbackBase}/api/ingest`;
+    }
+    
+    console.log(`Triggering ingestion at: ${ingestUrl}`);
+    
+    try {
+      const ingestRes = await fetch(ingestUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: userId }),
-      })
-        .then(res => {
-          if (!res.ok) {
-            console.error(`Ingestion API returned error: ${res.status} ${res.statusText}`);
-            return res.text().then(text => {
-              console.error("Ingestion error response:", text);
-            });
-          }
-          console.log("Ingestion triggered successfully");
-          return res.json();
-        })
-        .then(data => {
-          console.log("Ingestion response:", data);
-        })
-        .catch(e => {
-          console.error("Ingestion trigger failed:", e.message);
-          console.error("Ingestion error stack:", e.stack);
-          // Don't throw - ingestion can happen later via manual trigger if needed
-        });
-    } catch (urlError: any) {
-      console.error("Failed to construct ingestion URL:", urlError.message);
-      // Fallback to environment variable if URL construction fails
-      const fallbackUrl = process.env.NEXT_PUBLIC_SITE_URL 
-        ? `${process.env.NEXT_PUBLIC_SITE_URL}/api/ingest`
-        : null;
+      });
       
-      if (fallbackUrl) {
-        console.log(`Using fallback URL: ${fallbackUrl}`);
-        fetch(fallbackUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: userId }),
-        }).catch(e => console.error("Fallback ingestion trigger failed:", e.message));
-      } else {
-        console.error("No valid ingestion URL available - ingestion will need to be triggered manually");
+      if (!ingestRes.ok) {
+        const errorText = await ingestRes.text();
+        console.error(`Ingestion API returned error: ${ingestRes.status} ${ingestRes.statusText}`);
+        console.error("Ingestion error response:", errorText);
+        // Still return success for onboarding, but note ingestion failed
+        return NextResponse.json({ 
+          success: true, 
+          warning: "Profile saved but persona generation failed. It will be retried.",
+          ingestionError: errorText 
+        });
       }
+      
+      const ingestData = await ingestRes.json();
+      console.log("Ingestion completed successfully:", ingestData.success);
+      
+      return NextResponse.json({ success: true, ingestion: ingestData.success });
+    } catch (ingestError: any) {
+      console.error("Ingestion trigger failed:", ingestError.message);
+      console.error("Ingestion error stack:", ingestError.stack);
+      // Onboarding data is saved, persona can be generated later
+      return NextResponse.json({ 
+        success: true, 
+        warning: "Profile saved but persona generation failed. It will be retried." 
+      });
     }
-
-    return NextResponse.json({ success: true });
 
   } catch (error: any) {
     console.error("Onboarding error:", error);

@@ -30,56 +30,24 @@ export function StepReview({ soulData, onPrev }: StepReviewProps) {
         throw new Error("You must be logged in to continue")
       }
       
-      // Call onboarding API to parse PDFs and save data
-      const onboardRes = await fetch('/api/onboard', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.id,
-          resumeBase64: soulData.resumeBase64 || null,
-          linkedinBase64: soulData.linkedinBase64 || null,
-          githubUrl: soulData.githubUrl || null,
-          xUrl: soulData.xUrl || null,
-          googleCalendarUrl: soulData.googleCalendarUrl || null,
-          networkingGoals: soulData.networking_goals || [],
-          voiceSignature: soulData.raw_assets?.voice_snippet || null,
-          skills: soulData.skills_possessed || [], // interests = skills
-          skillsDesired: soulData.hiringSkillsDesired || [],
-          locationDesired: soulData.hiringLocationsDesired || [],
-        }),
-      })
+      // Store user ID in sessionStorage for the creating page
+      sessionStorage.setItem('onboarding_user_id', user.id)
+      sessionStorage.setItem('onboarding_data', JSON.stringify({
+        userId: user.id,
+        resumeBase64: soulData.resumeBase64 || null,
+        linkedinBase64: soulData.linkedinBase64 || null,
+        githubUrl: soulData.githubUrl || null,
+        xUrl: soulData.xUrl || null,
+        googleCalendarUrl: soulData.googleCalendarUrl || null,
+        networkingGoals: soulData.networking_goals || [],
+        voiceSignature: soulData.raw_assets?.voice_snippet || null,
+        skills: soulData.skills_possessed || [],
+        skillsDesired: soulData.hiringSkillsDesired || [],
+        locationDesired: soulData.hiringLocationsDesired || [],
+      }))
       
-      const onboardData = await onboardRes.json()
-      
-      if (!onboardData.success) {
-        throw new Error(onboardData.error || "Failed to save profile")
-      }
-      
-      // Fire-and-forget Gumloop webhook (proof of concept)
-      const gumloopPayload = {
-        name: user.user_metadata?.full_name || user.email?.split('@')[0] || "User",
-        email: user.email || "",
-        password: "abc", // Placeholder - user already authenticated
-        linkedin_pdf: soulData.linkedinUrl || "",
-        resume_pdf: "", // Would need to convert base64 to URL if needed
-        github_url: soulData.githubUrl || "",
-        typing_style: soulData.raw_assets?.voice_snippet || "",
-        networking_goals: Array.isArray(soulData.networking_goals) 
-          ? soulData.networking_goals.join(", ") 
-          : ""
-      }
-      
-      fetch('https://api.gumloop.com/api/v1/start_pipeline?user_id=gNDc8nrosdYwaeVhycwWU0jrWq83&saved_item_id=nV4koxTdFHdquYLDVfV6tX', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer a4fe472e790245a9995338eee6bf0958'
-        },
-        body: JSON.stringify(gumloopPayload)
-      }).catch(() => {
-      })
-      
-      router.push("/dashboard")
+      // Redirect immediately - the creating page will handle the API call
+      router.push("/creating")
     } catch (error: any) {
       console.error("Deploy error:", error)
       setDeployError(error.message || "Failed to save profile")
