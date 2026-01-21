@@ -9,9 +9,8 @@ const supabase = createClient(
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-// ============================================================================
-// CONFIGURATION
-// ============================================================================
+// Configuration
+
 export const maxDuration = 60; // Vercel timeout limit
 
 const unifiedProfileSchema = {
