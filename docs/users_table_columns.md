@@ -14,7 +14,9 @@ Based on code analysis, here are all columns being used:
 
 ## PDF/Text Extraction
 - `resume_text` (text) - Raw text extracted from resume PDF via Gemini
+- `resume_normalized` (jsonb) - Structured JSON from resume: { name, email, experience[], projects[], education[], skills[], etc. }
 - `linkedin_text` (text) - Raw text extracted from LinkedIn PDF via Gemini
+- `linkedin_normalized` (jsonb) - Structured JSON from LinkedIn: { name, headline, about, experience[], skills[], etc. }
 
 ## URLs
 - `github_url` (text) - GitHub profile URL
@@ -37,11 +39,13 @@ Based on code analysis, here are all columns being used:
 
 ```sql
 -- Add any missing columns (adjust types as needed)
-ALTER TABLE users 
+ALTER TABLE users
   ADD COLUMN IF NOT EXISTS email text,
   ADD COLUMN IF NOT EXISTS location text,
   ADD COLUMN IF NOT EXISTS resume_text text,
+  ADD COLUMN IF NOT EXISTS resume_normalized jsonb,
   ADD COLUMN IF NOT EXISTS linkedin_text text,
+  ADD COLUMN IF NOT EXISTS linkedin_normalized jsonb,
   ADD COLUMN IF NOT EXISTS github_url text,
   ADD COLUMN IF NOT EXISTS x_url text,
   ADD COLUMN IF NOT EXISTS linkedin_url text,

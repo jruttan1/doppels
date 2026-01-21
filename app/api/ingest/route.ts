@@ -38,20 +38,27 @@ export async function POST(req: Request) {
 
     if (fetchError || !user) throw new Error(`User not found: ${fetchError?.message}`);
 
-    // Raw text extracted from PDFs using Gemini Vision API (stored in database)
+    // Check for pre-normalized data from onboarding (new flow)
+    // Fall back to raw text normalization if pre-normalized data doesn't exist (legacy flow)
     const resumeRawText = user.resume_text || null;
     const linkedinRawText = user.linkedin_text || null;
+    const preNormalizedResume = user.resume_normalized || null;
+    const preNormalizedLinkedin = user.linkedin_normalized || null;
 
-    // normalize with gemini
+    // Use pre-normalized data if available, otherwise normalize from raw text
     const [normalizedResume, normalizedLinkedin, githubData, xSummary] = await Promise.all([
-      resumeRawText ? normalizeResumeWithGemini(resumeRawText) : Promise.resolve(null),
-      linkedinRawText ? normalizeLinkedinWithGemini(linkedinRawText) : Promise.resolve(null),
+      preNormalizedResume
+        ? Promise.resolve(preNormalizedResume)
+        : (resumeRawText ? normalizeResumeWithGemini(resumeRawText) : Promise.resolve(null)),
+      preNormalizedLinkedin
+        ? Promise.resolve(preNormalizedLinkedin)
+        : (linkedinRawText ? normalizeLinkedinWithGemini(linkedinRawText) : Promise.resolve(null)),
       user.github_url ? fetchGitHubData(user.github_url) : Promise.resolve(null),
       user.x_url ? fetchAndSummarizeX(user.x_url) : Promise.resolve(null)
     ]);
 
-    console.log("Normalized Resume:", normalizedResume ? "✓" : "✗");
-    console.log("Normalized LinkedIn:", normalizedLinkedin ? "✓" : "✗");
+    console.log("Normalized Resume:", normalizedResume ? "✓" : "✗", preNormalizedResume ? "(pre-normalized)" : "(from raw text)");
+    console.log("Normalized LinkedIn:", normalizedLinkedin ? "✓" : "✗", preNormalizedLinkedin ? "(pre-normalized)" : "(from raw text)");
     console.log("Github Data:", githubData ? "✓" : "✗");
     console.log("X Summary:", xSummary ? "✓" : "✗");
     
@@ -98,45 +105,45 @@ ${githubData ? JSON.stringify(githubData, null, 2) : "Not provided"}
 ${xSummaryToUse ? JSON.stringify(xSummaryToUse, null, 2) : "Not provided"}
 
 GUIDELINES:
-- Resume is the source of truth for work history, technical details, and skills
+- Resume/LinkedIn normalized data may have an "analysis" layer with pre-computed insights (seniority_level, primary_role, voice_tone, years_experience) - USE THESE
+- Resume/LinkedIn normalized data may have "identity" nested objects - extract name, location, linkedin_url from there
+- Resume/LinkedIn skills may be nested under skills.verified_hard_skills, skills.all_keywords, skills.verified_skills, skills.all_skills
+- Resume is the source of truth for work history, technical details, and verified skills
 - LinkedIn provides soft skills, endorsements, and professional "vibe"
 - GitHub validates technical skills - weight repos by stars and recency
-- X/Twitter analysis is CRITICAL for understanding authentic personality - incorporate ALL fields from X/Twitter Analysis
+- X/Twitter analysis is CRITICAL for understanding authentic personality
 - User metadata contains their explicit networking goals - preserve these exactly
 - Merge duplicate information intelligently (don't repeat the same skill twice)
-- Make intelligent assumptions about personality based on writing style and interests
 
 CRITICAL REQUIREMENTS:
-1. **experience_log MUST be populated** - Extract ALL work experience from Resume.experience and LinkedIn.experience arrays. Format each as: "Role @ Company (StartDate-EndDate) - Detailed description with key achievements, metrics, and impact. Include technologies used and team size if relevant."
+1. **experience_log MUST be populated** - Extract ALL work experience from Resume.experience and LinkedIn.experience arrays. Format each as: "Role @ Company (StartDate-EndDate) - Detailed description with key achievements, metrics, and impact."
 2. **voice_snippet MUST be ONLY the user's original voice_signature** - Use the exact text from userMetadata.voice_signature. Do NOT combine with X/Twitter analysis or add any other text.
-3. **project_list** - Include GitHub repos formatted as: "Repo: name (Language) - Description with impact/stars if notable"
-4. **interests** - MUST incorporate X/Twitter key_interests. Combine interests from:
-   - X/Twitter Analysis.key_interests (REQUIRED if present)
-   - LinkedIn interests/about section
-   - GitHub repo topics/descriptions
-   - User metadata interests
-   - X/Twitter notable_opinions (as interests)
-5. **X/Twitter Integration** - The X/Twitter Analysis contains valuable personality data:
-   - Use communication_style, tone, personality_traits to inform the overall persona understanding
-   - Incorporate key_interests into the interests array
-   - Use notable_opinions to add depth to interests
-   - The sample_voice can inform how to interpret their communication style (but don't add it to voice_snippet)
+3. **project_list** - Include projects from Resume.projects (with tech_stack and metrics) AND GitHub repos formatted as: "Repo: name (Language) - Description with impact/stars if notable"
+4. **interests** - Combine from all sources: X/Twitter key_interests, LinkedIn about section, GitHub topics, user metadata interests
+5. **Use the analysis layer** - If Resume or LinkedIn has analysis.seniority_level, analysis.primary_role, analysis.voice_tone - use these to inform the tagline and overall persona
+6. **skills_possessed** - Prioritize verified_hard_skills and verified_skills over all_keywords/all_skills
 
 OUTPUT SCHEMA:
 {
   "identity": {
     "name": "First Last",
-    "tagline": "Role @ Company | Previous Notable Role",
+    "tagline": "Role @ Company | Previous Notable Role (use analysis.primary_role if available)",
     "location": "City, State/Country"
   },
-  "skills_possessed": ["Array of technical skills they have - from resume, github, linkedin"],
-  "skills_desired": ["Array of skills they're looking for in a match (cofounder, hire, partner). Must be empty if they are not hiring or looking for a cofounder."],
+  "analysis": {
+    "seniority_level": "Junior/Mid/Senior/Staff/Founder/Student - from Resume/LinkedIn analysis",
+    "primary_role": "Main job function - from Resume/LinkedIn analysis",
+    "voice_tone": "Writing style - from Resume/LinkedIn analysis or X/Twitter",
+    "years_experience": "Number - from Resume/LinkedIn analysis"
+  },
+  "skills_possessed": ["Array of VERIFIED technical skills - prioritize verified_hard_skills/verified_skills"],
+  "skills_desired": ["Array of skills they're looking for (from user metadata). Empty if not hiring/looking for cofounder."],
   "networking_goals": ["Array - preserve exactly from user metadata networking_goals"],
   "raw_assets": {
     "voice_snippet": "String - EXACTLY the user provided voice_signature from userMetadata, nothing else",
-    "experience_log": ["Array - REQUIRED. Extract from Resume.experience and LinkedIn.experience. Format: 'Role @ Company (Years) - Description with metrics and achievements'"],
-    "project_list": ["Array of project strings like: 'Repo: name (Language) - Description with impact/stars if notable'"],
-    "interests": ["Array - REQUIRED. MUST include X/Twitter Analysis.key_interests if present. Also include: LinkedIn interests, GitHub topics, X/Twitter notable_opinions, and user metadata interests. Be comprehensive and include all relevant topics from X/Twitter analysis."]
+    "experience_log": ["Array - REQUIRED. Format: 'Role @ Company (Years) - Description with metrics and achievements'"],
+    "project_list": ["Array - Include Resume projects with tech_stack/metrics AND GitHub repos"],
+    "interests": ["Array - REQUIRED. Combine from X/Twitter, LinkedIn, GitHub, and user metadata"]
   }
 }
 `;

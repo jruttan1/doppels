@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,21 +8,280 @@ const supabase = createClient(
 );
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const flashModel = genAI.getGenerativeModel({ 
+
+// ============================================================================
+// RESUME SCHEMA - Structured extraction for Doppel Agent network
+// ============================================================================
+const resumeSchema = {
+  description: "Structured extraction of a user's resume for the Doppel Agent network.",
+  type: SchemaType.OBJECT,
+  properties: {
+    raw_text: {
+      type: SchemaType.STRING,
+      description: "The full extracted text from the PDF preserving structure"
+    },
+    identity: {
+      type: SchemaType.OBJECT,
+      properties: {
+        name: { type: SchemaType.STRING },
+        email: { type: SchemaType.STRING },
+        phone: { type: SchemaType.STRING },
+        linkedin_url: { type: SchemaType.STRING },
+        location: { type: SchemaType.STRING },
+      },
+      required: ["name"]
+    },
+    analysis: {
+      type: SchemaType.OBJECT,
+      description: "Doppel's analysis layer - insights derived from the resume",
+      properties: {
+        seniority_level: {
+          type: SchemaType.STRING,
+          description: "Career level: Junior, Mid, Senior, Staff, Founder, or Student"
+        },
+        primary_role: {
+          type: SchemaType.STRING,
+          description: "Main job function, e.g. Full Stack Engineer, Product Manager, Data Scientist"
+        },
+        voice_tone: {
+          type: SchemaType.STRING,
+          description: "Writing style: Academic, Hacker, Corporate, Enthusiastic, Technical, Casual"
+        },
+        years_experience: {
+          type: SchemaType.NUMBER,
+          description: "Total years of professional experience"
+        }
+      },
+      required: ["seniority_level", "primary_role"]
+    },
+    skills: {
+      type: SchemaType.OBJECT,
+      properties: {
+        verified_hard_skills: {
+          type: SchemaType.ARRAY,
+          items: { type: SchemaType.STRING },
+          description: "Only skills with PROOF in the resume (used in projects, mentioned in experience)"
+        },
+        all_keywords: {
+          type: SchemaType.ARRAY,
+          items: { type: SchemaType.STRING },
+          description: "All technical keywords and skills mentioned"
+        }
+      }
+    },
+    experience: {
+      type: SchemaType.ARRAY,
+      items: {
+        type: SchemaType.OBJECT,
+        properties: {
+          company: { type: SchemaType.STRING },
+          role: { type: SchemaType.STRING },
+          start_date: { type: SchemaType.STRING },
+          end_date: { type: SchemaType.STRING },
+          location: { type: SchemaType.STRING },
+          description: { type: SchemaType.STRING },
+          highlights: {
+            type: SchemaType.ARRAY,
+            items: { type: SchemaType.STRING },
+            description: "Key achievements with metrics if available"
+          }
+        },
+        required: ["company", "role"]
+      }
+    },
+    projects: {
+      type: SchemaType.ARRAY,
+      items: {
+        type: SchemaType.OBJECT,
+        properties: {
+          name: { type: SchemaType.STRING },
+          description: { type: SchemaType.STRING },
+          tech_stack: {
+            type: SchemaType.ARRAY,
+            items: { type: SchemaType.STRING },
+            description: "Technologies used in this project"
+          },
+          metrics: {
+            type: SchemaType.STRING,
+            description: "Any stats like '10k users', '1st place', '50 stars'"
+          }
+        },
+        required: ["name"]
+      }
+    },
+    education: {
+      type: SchemaType.ARRAY,
+      items: {
+        type: SchemaType.OBJECT,
+        properties: {
+          school: { type: SchemaType.STRING },
+          degree: { type: SchemaType.STRING },
+          field: { type: SchemaType.STRING },
+          year: { type: SchemaType.STRING }
+        }
+      }
+    },
+    certifications: {
+      type: SchemaType.ARRAY,
+      items: { type: SchemaType.STRING }
+    }
+  },
+  required: ["raw_text", "identity", "analysis", "skills", "experience", "projects"]
+};
+
+// ============================================================================
+// LINKEDIN SCHEMA - Structured extraction for LinkedIn profiles
+// ============================================================================
+const linkedinSchema = {
+  description: "Structured extraction of a LinkedIn profile for the Doppel Agent network.",
+  type: SchemaType.OBJECT,
+  properties: {
+    raw_text: {
+      type: SchemaType.STRING,
+      description: "The full extracted text from the PDF preserving structure"
+    },
+    identity: {
+      type: SchemaType.OBJECT,
+      properties: {
+        name: { type: SchemaType.STRING },
+        headline: { type: SchemaType.STRING, description: "LinkedIn headline" },
+        linkedin_url: { type: SchemaType.STRING },
+        location: { type: SchemaType.STRING },
+        about: { type: SchemaType.STRING, description: "About/Summary section" }
+      },
+      required: ["name"]
+    },
+    analysis: {
+      type: SchemaType.OBJECT,
+      description: "Doppel's analysis layer - insights derived from the profile",
+      properties: {
+        seniority_level: {
+          type: SchemaType.STRING,
+          description: "Career level: Junior, Mid, Senior, Staff, Founder, or Student"
+        },
+        primary_role: {
+          type: SchemaType.STRING,
+          description: "Main job function derived from headline and experience"
+        },
+        voice_tone: {
+          type: SchemaType.STRING,
+          description: "Writing style from About section: Academic, Hacker, Corporate, Enthusiastic"
+        },
+        years_experience: {
+          type: SchemaType.NUMBER,
+          description: "Total years of professional experience"
+        },
+        network_strength: {
+          type: SchemaType.STRING,
+          description: "Indicator of network size/engagement if visible: Small, Medium, Large"
+        }
+      },
+      required: ["seniority_level", "primary_role"]
+    },
+    skills: {
+      type: SchemaType.OBJECT,
+      properties: {
+        verified_skills: {
+          type: SchemaType.ARRAY,
+          items: { type: SchemaType.STRING },
+          description: "Skills with endorsements or used in experience"
+        },
+        all_skills: {
+          type: SchemaType.ARRAY,
+          items: { type: SchemaType.STRING },
+          description: "All listed skills"
+        },
+        top_endorsements: {
+          type: SchemaType.ARRAY,
+          items: { type: SchemaType.STRING },
+          description: "Most endorsed skills if visible"
+        }
+      }
+    },
+    experience: {
+      type: SchemaType.ARRAY,
+      items: {
+        type: SchemaType.OBJECT,
+        properties: {
+          company: { type: SchemaType.STRING },
+          role: { type: SchemaType.STRING },
+          duration: { type: SchemaType.STRING },
+          description: { type: SchemaType.STRING }
+        },
+        required: ["company", "role"]
+      }
+    },
+    projects: {
+      type: SchemaType.ARRAY,
+      items: {
+        type: SchemaType.OBJECT,
+        properties: {
+          name: { type: SchemaType.STRING },
+          description: { type: SchemaType.STRING },
+          contributors: {
+            type: SchemaType.ARRAY,
+            items: { type: SchemaType.STRING }
+          }
+        }
+      }
+    },
+    education: {
+      type: SchemaType.ARRAY,
+      items: {
+        type: SchemaType.OBJECT,
+        properties: {
+          school: { type: SchemaType.STRING },
+          degree: { type: SchemaType.STRING },
+          field: { type: SchemaType.STRING }
+        }
+      }
+    },
+    certifications: {
+      type: SchemaType.ARRAY,
+      items: { type: SchemaType.STRING }
+    },
+    volunteer: {
+      type: SchemaType.ARRAY,
+      items: { type: SchemaType.STRING }
+    },
+    recommendations_summary: {
+      type: SchemaType.STRING,
+      description: "Summary of any recommendations if present"
+    }
+  },
+  required: ["raw_text", "identity", "analysis", "skills", "experience"]
+};
+
+// ============================================================================
+// GEMINI MODELS
+// ============================================================================
+
+// Model for resume extraction with schema validation
+const resumeModel = genAI.getGenerativeModel({
   model: "gemini-1.5-flash",
   generationConfig: {
-    responseMimeType: "text/plain"
+    responseMimeType: "application/json",
+    responseSchema: resumeSchema as any
+  }
+});
+
+// Model for LinkedIn extraction with schema validation
+const linkedinModel = genAI.getGenerativeModel({
+  model: "gemini-1.5-flash",
+  generationConfig: {
+    responseMimeType: "application/json",
+    responseSchema: linkedinSchema as any
   }
 });
 
 export const maxDuration = 60;
 
-// PDF text extraction using Gemini Vision API (much more reliable!)
-async function extractPdfText(base64: string): Promise<string | null> {
+// Extract and normalize Resume PDF using schema-validated Gemini model
+async function extractAndNormalizeResume(base64: string): Promise<{ raw: string; normalized: any } | null> {
   try {
-    console.log("Extracting PDF text using Gemini Vision API...");
-    
-    const result = await flashModel.generateContent([
+    console.log("Extracting and normalizing resume PDF with schema validation...");
+
+    const result = await resumeModel.generateContent([
       {
         inlineData: {
           mimeType: "application/pdf",
@@ -30,16 +289,82 @@ async function extractPdfText(base64: string): Promise<string | null> {
         }
       },
       {
-        text: "Extract ALL text from this PDF document. Preserve the structure, formatting, and all content including headers, bullet points, dates, and technical details. Return only the extracted text, nothing else."
+        text: `Extract ALL content from this resume PDF.
+
+IMPORTANT INSTRUCTIONS:
+1. Extract the complete raw text preserving structure
+2. Identify the person's identity (name, email, phone, linkedin, location)
+3. ANALYZE their career: determine seniority level, primary role, voice/writing tone, years of experience
+4. For SKILLS: separate verified skills (actually used in projects/experience) from all keywords mentioned
+5. Extract ALL work experience with company, role, dates, descriptions, and key achievements
+6. Extract ALL projects with tech stacks and any metrics (users, stars, awards)
+7. Extract education and certifications
+
+Be thorough and preserve specific metrics, technologies, and achievements.`
       }
     ]);
-    
-    const text = result.response.text();
-    console.log(`Extracted ${text.length} characters from PDF`);
-    return text.trim() || null;
+
+    const parsed = JSON.parse(result.response.text());
+
+    console.log(`Resume extracted: ${parsed.raw_text?.length || 0} chars`);
+    console.log(`  - Analysis: ${parsed.analysis?.seniority_level} ${parsed.analysis?.primary_role}`);
+    console.log(`  - Experience: ${parsed.experience?.length || 0} roles`);
+    console.log(`  - Skills: ${parsed.skills?.verified_hard_skills?.length || 0} verified, ${parsed.skills?.all_keywords?.length || 0} total`);
+
+    return {
+      raw: parsed.raw_text || '',
+      normalized: parsed
+    };
   } catch (e: any) {
-    console.error("PDF extraction error:", e.message);
-    console.error("PDF extraction error stack:", e.stack);
+    console.error("Resume extraction/normalization error:", e.message);
+    console.error("Error stack:", e.stack);
+    return null;
+  }
+}
+
+// Extract and normalize LinkedIn PDF using schema-validated Gemini model
+async function extractAndNormalizeLinkedin(base64: string): Promise<{ raw: string; normalized: any } | null> {
+  try {
+    console.log("Extracting and normalizing LinkedIn PDF with schema validation...");
+
+    const result = await linkedinModel.generateContent([
+      {
+        inlineData: {
+          mimeType: "application/pdf",
+          data: base64
+        }
+      },
+      {
+        text: `Extract ALL content from this LinkedIn profile PDF.
+
+IMPORTANT INSTRUCTIONS:
+1. Extract the complete raw text preserving structure
+2. Identify the person's identity (name, headline, linkedin URL, location, about section)
+3. ANALYZE their career: determine seniority level, primary role, voice/writing tone, years of experience, network strength
+4. For SKILLS: identify verified skills (endorsed or demonstrated), all skills, and top endorsements
+5. Extract ALL work experience - focus on tech-related roles, include descriptions
+6. Extract projects with contributors if listed
+7. Extract education, certifications, and volunteer work
+8. Summarize any recommendations if present
+
+Focus on tech-related experiences. Be thorough with details.`
+      }
+    ]);
+
+    const parsed = JSON.parse(result.response.text());
+
+    console.log(`LinkedIn extracted: ${parsed.raw_text?.length || 0} chars`);
+    console.log(`  - Analysis: ${parsed.analysis?.seniority_level} ${parsed.analysis?.primary_role}`);
+    console.log(`  - Experience: ${parsed.experience?.length || 0} roles`);
+    console.log(`  - Skills: ${parsed.skills?.verified_skills?.length || 0} verified, ${parsed.skills?.all_skills?.length || 0} total`);
+
+    return {
+      raw: parsed.raw_text || '',
+      normalized: parsed
+    };
+  } catch (e: any) {
+    console.error("LinkedIn extraction/normalization error:", e.message);
+    console.error("Error stack:", e.stack);
     return null;
   }
 }
@@ -66,26 +391,50 @@ export async function POST(req: Request) {
 
     console.log(`Processing onboarding for user: ${userId}`);
 
-    // Parse PDFs server-side
+    // Parse and normalize PDFs server-side
     let resumeText: string | null = null;
+    let resumeNormalized: any = null;
     let linkedinText: string | null = null;
+    let linkedinNormalized: any = null;
+    let extractedLinkedinUrl: string | null = null;
 
-    if (resumeBase64) {
-      resumeText = await extractPdfText(resumeBase64);
-      console.log(`Parsed resume: ${resumeText?.length || 0} chars`);
+    // Process resume and LinkedIn in parallel
+    const [resumeResult, linkedinResult] = await Promise.all([
+      resumeBase64 ? extractAndNormalizeResume(resumeBase64) : Promise.resolve(null),
+      linkedinBase64 ? extractAndNormalizeLinkedin(linkedinBase64) : Promise.resolve(null)
+    ]);
+
+    if (resumeResult) {
+      resumeText = resumeResult.raw;
+      resumeNormalized = resumeResult.normalized;
+      console.log(`Parsed resume: ${resumeText?.length || 0} chars, normalized: ${!!resumeNormalized}`);
+
+      // Extract LinkedIn URL from resume identity if present
+      if (resumeNormalized?.identity?.linkedin_url) {
+        extractedLinkedinUrl = resumeNormalized.identity.linkedin_url;
+      }
     }
 
-    if (linkedinBase64) {
-      linkedinText = await extractPdfText(linkedinBase64);
-      console.log(`Parsed LinkedIn: ${linkedinText?.length || 0} chars`);
+    if (linkedinResult) {
+      linkedinText = linkedinResult.raw;
+      linkedinNormalized = linkedinResult.normalized;
+      console.log(`Parsed LinkedIn: ${linkedinText?.length || 0} chars, normalized: ${!!linkedinNormalized}`);
+
+      // Extract LinkedIn URL from LinkedIn PDF identity (takes priority)
+      if (linkedinNormalized?.identity?.linkedin_url) {
+        extractedLinkedinUrl = linkedinNormalized.identity.linkedin_url;
+      }
     }
 
-    // Save to database (only columns that exist in the table)
+    // Save to database with normalized data
     const { error: updateError } = await supabase
       .from('users')
       .update({
         resume_text: resumeText,
+        resume_normalized: resumeNormalized,
         linkedin_text: linkedinText,
+        linkedin_normalized: linkedinNormalized,
+        linkedin_url: extractedLinkedinUrl,
         github_url: githubUrl || null,
         x_url: xUrl || null,
         google_calendar_url: googleCalendarUrl || null,
