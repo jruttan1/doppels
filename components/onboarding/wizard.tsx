@@ -16,11 +16,12 @@ const HIRING_GOALS = ["find a co-founder", "hire", "cofounder", "hiring", "talen
 export function OnboardingWizard() {
   const [currentStep, setCurrentStep] = useState(0)
   const [soulData, setSoulData] = useState<Partial<SoulFileData>>({
-    skills_possessed: [],
-    skills_desired: [],
+    // Note: skills_possessed now comes solely from document parsing (resume/LinkedIn)
+    // We only collect soft interests manually
     networking_goals: [],
     raw_assets: {
       voice_snippet: "",
+      interests: [], // Soft interests - hobbies, passions, lifestyle
     },
     filters: {
       locations: [],

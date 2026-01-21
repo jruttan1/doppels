@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, ArrowRight, X, Plus } from "lucide-react"
+import { ArrowLeft, ArrowRight, X, Plus, Heart } from "lucide-react"
 import type { SoulFileData } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -13,32 +13,39 @@ interface StepInterestsProps {
   onPrev: () => void
 }
 
+// Soft interests only - personal hobbies, passions, and lifestyle
 const ALL_INTERESTS = [
-  "LLMs", "AI/ML", "Distributed Systems", "Backend Development", "Frontend Development",
-  "DevOps", "Cloud Infrastructure", "Kubernetes", "Systems Programming", "Rust",
-  "TypeScript", "Python", "Go", "Product Management", "Developer Tools", "Open Source",
-  "High-Performance Computing", "WASM", "Memory Safety", "Data Engineering", "MLOps",
-  "API Design", "Microservices", "Database Design", "Security", "Cryptography",
-  "Mechanical Keyboards", "Biohacking", "Espresso Brewing", "Indie Hacking", "Startups",
-  "Product Design", "Photography", "Running", "Cycling", "Climbing", "Travel",
-  "Reading", "Writing", "Podcasts", "Music Production", "Gaming", "Longevity",
-  "Meditation", "Fitness", "Cooking", "Wine", "Coffee", "Tea", "Minimalism"
+  // Hobbies & Activities
+  "Mechanical Keyboards", "Espresso Brewing", "Photography", "Running", "Cycling",
+  "Climbing", "Hiking", "Swimming", "Yoga", "Meditation", "Gaming", "Chess",
+  // Creative
+  "Music Production", "DJing", "Writing", "Reading", "Podcasts", "Film", "Art",
+  // Lifestyle
+  "Biohacking", "Longevity", "Fitness", "Cooking", "Baking", "Wine", "Coffee",
+  "Tea", "Minimalism", "Travel", "Languages",
+  // Community & Social
+  "Indie Hacking", "Startups", "Open Source", "Community Building", "Mentoring",
+  // Learning & Growth
+  "Philosophy", "Psychology", "Economics", "History", "Science Fiction",
+  // Other
+  "Dogs", "Cats", "Gardening", "Home Automation", "Woodworking", "3D Printing"
 ]
 
 const RELATED_INTERESTS: Record<string, string[]> = {
-  "Biohacking": ["Longevity", "Fitness", "Meditation", "Supplements", "Sleep Optimization"],
-  "Rust": ["WASM", "Memory Safety", "Systems Programming", "Performance", "Embedded"],
-  "LLMs": ["AI/ML", "Prompt Engineering", "RAG", "Fine-tuning", "AI Safety"],
-  "AI/ML": ["LLMs", "MLOps", "Data Engineering", "Python", "Deep Learning"],
-  "Startups": ["Indie Hacking", "Product Management", "Fundraising", "Growth", "YC"],
+  "Biohacking": ["Longevity", "Fitness", "Meditation", "Sleep Optimization", "Supplements"],
   "Espresso Brewing": ["Coffee", "Latte Art", "Home Roasting", "Specialty Coffee"],
-  "Mechanical Keyboards": ["Custom Builds", "Switches", "Keycaps", "Ergonomics"],
-  "Open Source": ["GitHub", "Community", "Developer Tools", "Documentation"],
-  "Distributed Systems": ["Kubernetes", "Microservices", "Scalability", "Consensus"],
-  "TypeScript": ["React", "Node.js", "Frontend Development", "Type Safety"],
-  "Python": ["Data Science", "AI/ML", "Automation", "FastAPI", "Django"],
-  "Product Management": ["User Research", "Roadmapping", "Metrics", "Strategy"],
-  "Fitness": ["Running", "Cycling", "Climbing", "Strength Training", "Recovery"],
+  "Mechanical Keyboards": ["Custom Builds", "Ergonomics", "Home Office"],
+  "Fitness": ["Running", "Cycling", "Climbing", "Yoga", "Meditation"],
+  "Photography": ["Film", "Travel", "Art", "Street Photography"],
+  "Startups": ["Indie Hacking", "Community Building", "Mentoring"],
+  "Coffee": ["Espresso Brewing", "Tea", "Specialty Coffee"],
+  "Running": ["Cycling", "Hiking", "Fitness", "Marathon"],
+  "Reading": ["Writing", "Philosophy", "Science Fiction", "Podcasts"],
+  "Gaming": ["Chess", "Board Games", "Esports"],
+  "Cooking": ["Baking", "Wine", "Fermentation", "BBQ"],
+  "Music Production": ["DJing", "Synthesizers", "Vinyl"],
+  "Travel": ["Photography", "Languages", "Hiking", "Culture"],
+  "Meditation": ["Yoga", "Mindfulness", "Biohacking", "Philosophy"],
 }
 
 export function StepInterests({ soulData, updateSoulData, onNext, onPrev }: StepInterestsProps) {
@@ -84,7 +91,7 @@ export function StepInterests({ soulData, updateSoulData, onNext, onPrev }: Step
       }
     })
     if (suggestions.size === 0) {
-      const popular = ["LLMs", "Startups", "Open Source", "Fitness", "Coffee"]
+      const popular = ["Coffee", "Fitness", "Reading", "Travel", "Photography"]
       popular.forEach(p => {
         if (!interests.includes(p)) suggestions.add(p)
       })
@@ -118,11 +125,18 @@ export function StepInterests({ soulData, updateSoulData, onNext, onPrev }: Step
   return (
     <div className="w-full max-w-2xl">
       <div className="text-center mb-12">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 mb-4">
+          <Heart className="w-4 h-4 text-primary" />
+          <span className="text-sm text-primary">Personal</span>
+        </div>
         <h1 className="text-4xl font-light mb-3 text-white">
-          Interests
+          What are you into?
         </h1>
-        <p className="text-white/50">
-          We match you on skills and personality.
+        <p className="text-white/50 max-w-md mx-auto">
+          Beyond work, what do you enjoy? These help us find people you'll actually vibe with.
+        </p>
+        <p className="text-white/30 text-sm mt-2">
+          Your technical skills are extracted from your resume and LinkedIn.
         </p>
       </div>
 
@@ -132,7 +146,7 @@ export function StepInterests({ soulData, updateSoulData, onNext, onPrev }: Step
           <input
             ref={inputRef}
             type="text"
-            placeholder="Type to add more..."
+            placeholder="Coffee, hiking, mechanical keyboards..."
             value={interestInput}
             onChange={(e) => {
               setInterestInput(e.target.value)
@@ -161,7 +175,7 @@ export function StepInterests({ soulData, updateSoulData, onNext, onPrev }: Step
               inputFocused ? "border-white/50" : "border-white/10"
             )}
           />
-          
+
           <button
             onClick={() => {
               if (interestInput.trim()) addInterest(interestInput)
@@ -170,10 +184,10 @@ export function StepInterests({ soulData, updateSoulData, onNext, onPrev }: Step
           >
             <Plus className="w-5 h-5" />
           </button>
-          
+
           {/* Typeahead dropdown */}
           {showDropdown && typeaheadSuggestions.length > 0 && (
-            <div 
+            <div
               ref={dropdownRef}
               className="absolute z-10 w-full mt-2 bg-black/90 border border-white/10 rounded-xl shadow-2xl overflow-hidden backdrop-blur-xl"
             >
@@ -197,11 +211,11 @@ export function StepInterests({ soulData, updateSoulData, onNext, onPrev }: Step
         {/* Selected interests */}
         {interests.length > 0 && (
           <div className="space-y-3">
-            <span className="text-xs text-white/30">Selected interests</span>
+            <span className="text-xs text-white/30">Your interests</span>
             <div className="flex flex-wrap gap-2">
               {interests.map((interest) => (
-                <span 
-                  key={interest} 
+                <span
+                  key={interest}
                   className="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/20 text-white text-sm"
                 >
                   {interest}
@@ -219,7 +233,7 @@ export function StepInterests({ soulData, updateSoulData, onNext, onPrev }: Step
 
         {/* Contextual suggestions */}
         <div className="space-y-3">
-          <span className="text-xs text-white/30">Suggestions</span>
+          <span className="text-xs text-white/30">Popular interests</span>
           <div className="flex flex-wrap gap-2">
             {contextualSuggestions.map((interest) => (
               <button
@@ -234,16 +248,16 @@ export function StepInterests({ soulData, updateSoulData, onNext, onPrev }: Step
         </div>
 
         <div className="flex justify-between pt-6">
-          <Button 
-            variant="ghost" 
-            onClick={onPrev} 
+          <Button
+            variant="ghost"
+            onClick={onPrev}
             className="gap-2 text-white/50 hover:text-white hover:bg-white/5"
           >
             <ArrowLeft className="w-4 h-4" />
             Back
           </Button>
-          <Button 
-            onClick={handleNext} 
+          <Button
+            onClick={handleNext}
             className="gap-2 bg-white text-black hover:bg-white/90 border-0 h-12 px-6"
           >
             Continue

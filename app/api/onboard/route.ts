@@ -380,8 +380,8 @@ export async function POST(req: Request) {
       googleCalendarUrl,
       networkingGoals,
       voiceSignature,
-      skills,
-      skillsDesired,
+      interests, // Soft interests - hobbies, passions (skills come from documents)
+      skillsDesired, // For hiring: skills they're looking for
       locationDesired,
     } = await req.json();
 
@@ -427,6 +427,8 @@ export async function POST(req: Request) {
     }
 
     // Save to database with normalized data
+    // Note: skills_possessed will be populated from document parsing (resume_normalized/linkedin_normalized)
+    // interests are soft/personal interests collected manually
     const { error: updateError } = await supabase
       .from('users')
       .update({
@@ -440,8 +442,8 @@ export async function POST(req: Request) {
         google_calendar_url: googleCalendarUrl || null,
         networking_goals: networkingGoals || [],
         voice_signature: voiceSignature || null,
-        skills: skills || [],
-        skills_desired: skillsDesired || [],
+        interests: interests || [], // Soft interests (hobbies, passions)
+        skills_desired: skillsDesired || [], // For hiring: skills they want
         location_desired: locationDesired || [],
         ingestion_status: 'pending',
       })

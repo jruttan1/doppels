@@ -41,7 +41,8 @@ export function StepReview({ soulData, onPrev }: StepReviewProps) {
         googleCalendarUrl: soulData.googleCalendarUrl || null,
         networkingGoals: soulData.networking_goals || [],
         voiceSignature: soulData.raw_assets?.voice_snippet || null,
-        skills: soulData.skills_possessed || [],
+        // Note: skills are now extracted from documents, we only send soft interests
+        interests: soulData.raw_assets?.interests || [],
         skillsDesired: soulData.hiringSkillsDesired || [],
         locationDesired: soulData.hiringLocationsDesired || [],
       }))
@@ -116,20 +117,20 @@ export function StepReview({ soulData, onPrev }: StepReviewProps) {
           </div>
         )}
 
-        {/* Interests */}
-        {soulData.skills_possessed && soulData.skills_possessed.length > 0 && (
+        {/* Personal Interests */}
+        {soulData.raw_assets?.interests && soulData.raw_assets.interests.length > 0 && (
           <div className="rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-xl p-5">
             <div className="flex items-center gap-2 text-xs text-white/40 mb-4">
               <Heart className="w-3.5 h-3.5" />
-              <span>Interests</span>
+              <span>Personal Interests</span>
             </div>
             <div className="flex flex-wrap gap-2">
-              {soulData.skills_possessed.map((skill) => (
-                <span 
-                  key={skill} 
+              {soulData.raw_assets.interests.map((interest) => (
+                <span
+                  key={interest}
                   className="px-3 py-1.5 rounded-full bg-white/5 border border-white/20 text-white text-sm"
                 >
-                  {skill}
+                  {interest}
                 </span>
               ))}
             </div>

@@ -3,7 +3,8 @@
 
 ALTER TABLE users
 ADD COLUMN IF NOT EXISTS resume_normalized jsonb,
-ADD COLUMN IF NOT EXISTS linkedin_normalized jsonb;
+ADD COLUMN IF NOT EXISTS linkedin_normalized jsonb,
+ADD COLUMN IF NOT EXISTS interests jsonb DEFAULT '[]'::jsonb;
 
 -- Add comment explaining the columns
 COMMENT ON COLUMN users.resume_normalized IS 'Structured JSON from resume PDF extraction: { name, email, experience[], projects[], education[], skills[], etc. }';
