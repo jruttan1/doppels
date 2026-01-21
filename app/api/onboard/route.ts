@@ -10,47 +10,46 @@ const supabase = createClient(
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 // ============================================================================
-// RESUME SCHEMA - Structured extraction for Doppel Agent network
+// CONFIGURATION
 // ============================================================================
-const resumeSchema = {
-  description: "Structured extraction of a user's resume for the Doppel Agent network.",
+export const maxDuration = 60; // Vercel timeout limit
+
+const unifiedProfileSchema = {
+  description: "A synthesized 'Golden Record' user profile combining Resume and LinkedIn data.",
   type: SchemaType.OBJECT,
   properties: {
-    raw_text: {
+    raw_text_summary: {
       type: SchemaType.STRING,
-      description: "The full extracted text from the PDF preserving structure"
+      description: "A combined summary of the raw text from both sources."
     },
     identity: {
       type: SchemaType.OBJECT,
       properties: {
         name: { type: SchemaType.STRING },
         email: { type: SchemaType.STRING },
-        phone: { type: SchemaType.STRING },
         linkedin_url: { type: SchemaType.STRING },
+        github_url: { type: SchemaType.STRING },
+        portfolio_url: { type: SchemaType.STRING },
         location: { type: SchemaType.STRING },
+        tagline: { type: SchemaType.STRING, description: "A 1-sentence professional hook." }
       },
-      required: ["name"]
+      required: ["name", "tagline"]
     },
     analysis: {
       type: SchemaType.OBJECT,
-      description: "Doppel's analysis layer - insights derived from the resume",
+      description: "Doppel's inference layer",
       properties: {
         seniority_level: {
           type: SchemaType.STRING,
-          description: "Career level: Junior, Mid, Senior, Staff, Founder, or Student"
+          enum: ["Student", "Junior", "Mid", "Senior", "Staff", "Founder"]
         },
-        primary_role: {
-          type: SchemaType.STRING,
-          description: "Main job function, e.g. Full Stack Engineer, Product Manager, Data Scientist"
-        },
+        primary_role: { type: SchemaType.STRING },
         voice_tone: {
           type: SchemaType.STRING,
-          description: "Writing style: Academic, Hacker, Corporate, Enthusiastic, Technical, Casual"
+          description: "Detected writing style: e.g. 'Hacker', 'Corporate', 'Academic'"
         },
-        years_experience: {
-          type: SchemaType.NUMBER,
-          description: "Total years of professional experience"
-        }
+        years_experience: { type: SchemaType.NUMBER },
+        data_quality_notes: { type: SchemaType.STRING }
       },
       required: ["seniority_level", "primary_role"]
     },
@@ -60,17 +59,18 @@ const resumeSchema = {
         verified_hard_skills: {
           type: SchemaType.ARRAY,
           items: { type: SchemaType.STRING },
-          description: "Only skills with PROOF in the resume (used in projects, mentioned in experience)"
+          description: "Skills explicitly used in a Project or Work Experience bullet point."
         },
         all_keywords: {
           type: SchemaType.ARRAY,
-          items: { type: SchemaType.STRING },
-          description: "All technical keywords and skills mentioned"
+          items: { type: SchemaType.STRING }
         }
-      }
+      },
+      required: ["verified_hard_skills"]
     },
     experience: {
       type: SchemaType.ARRAY,
+      description: "Merged work history. LinkedIn dates take priority.",
       items: {
         type: SchemaType.OBJECT,
         properties: {
@@ -78,35 +78,23 @@ const resumeSchema = {
           role: { type: SchemaType.STRING },
           start_date: { type: SchemaType.STRING },
           end_date: { type: SchemaType.STRING },
-          location: { type: SchemaType.STRING },
           description: { type: SchemaType.STRING },
-          highlights: {
-            type: SchemaType.ARRAY,
-            items: { type: SchemaType.STRING },
-            description: "Key achievements with metrics if available"
-          }
-        },
-        required: ["company", "role"]
+          highlights: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } }
+        }
       }
     },
     projects: {
       type: SchemaType.ARRAY,
+      description: "Merged project list from Resume + LinkedIn Featured section.",
       items: {
         type: SchemaType.OBJECT,
         properties: {
           name: { type: SchemaType.STRING },
           description: { type: SchemaType.STRING },
-          tech_stack: {
-            type: SchemaType.ARRAY,
-            items: { type: SchemaType.STRING },
-            description: "Technologies used in this project"
-          },
-          metrics: {
-            type: SchemaType.STRING,
-            description: "Any stats like '10k users', '1st place', '50 stars'"
-          }
-        },
-        required: ["name"]
+          tech_stack: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+          metrics: { type: SchemaType.STRING, description: "Stars, Users, Revenue, etc." },
+          source: { type: SchemaType.STRING, enum: ["Resume", "LinkedIn", "Both"] }
+        }
       }
     },
     education: {
@@ -120,251 +108,88 @@ const resumeSchema = {
           year: { type: SchemaType.STRING }
         }
       }
-    },
-    certifications: {
-      type: SchemaType.ARRAY,
-      items: { type: SchemaType.STRING }
     }
   },
-  required: ["raw_text", "identity", "analysis", "skills", "experience", "projects"]
+  required: ["identity", "analysis", "skills", "experience", "projects"]
 };
 
-// ============================================================================
-// LINKEDIN SCHEMA - Structured extraction for LinkedIn profiles
-// ============================================================================
-const linkedinSchema = {
-  description: "Structured extraction of a LinkedIn profile for the Doppel Agent network.",
-  type: SchemaType.OBJECT,
-  properties: {
-    raw_text: {
-      type: SchemaType.STRING,
-      description: "The full extracted text from the PDF preserving structure"
-    },
-    identity: {
-      type: SchemaType.OBJECT,
-      properties: {
-        name: { type: SchemaType.STRING },
-        headline: { type: SchemaType.STRING, description: "LinkedIn headline" },
-        linkedin_url: { type: SchemaType.STRING },
-        location: { type: SchemaType.STRING },
-        about: { type: SchemaType.STRING, description: "About/Summary section" }
-      },
-      required: ["name"]
-    },
-    analysis: {
-      type: SchemaType.OBJECT,
-      description: "Doppel's analysis layer - insights derived from the profile",
-      properties: {
-        seniority_level: {
-          type: SchemaType.STRING,
-          description: "Career level: Junior, Mid, Senior, Staff, Founder, or Student"
-        },
-        primary_role: {
-          type: SchemaType.STRING,
-          description: "Main job function derived from headline and experience"
-        },
-        voice_tone: {
-          type: SchemaType.STRING,
-          description: "Writing style from About section: Academic, Hacker, Corporate, Enthusiastic"
-        },
-        years_experience: {
-          type: SchemaType.NUMBER,
-          description: "Total years of professional experience"
-        },
-        network_strength: {
-          type: SchemaType.STRING,
-          description: "Indicator of network size/engagement if visible: Small, Medium, Large"
-        }
-      },
-      required: ["seniority_level", "primary_role"]
-    },
-    skills: {
-      type: SchemaType.OBJECT,
-      properties: {
-        verified_skills: {
-          type: SchemaType.ARRAY,
-          items: { type: SchemaType.STRING },
-          description: "Skills with endorsements or used in experience"
-        },
-        all_skills: {
-          type: SchemaType.ARRAY,
-          items: { type: SchemaType.STRING },
-          description: "All listed skills"
-        },
-        top_endorsements: {
-          type: SchemaType.ARRAY,
-          items: { type: SchemaType.STRING },
-          description: "Most endorsed skills if visible"
-        }
-      }
-    },
-    experience: {
-      type: SchemaType.ARRAY,
-      items: {
-        type: SchemaType.OBJECT,
-        properties: {
-          company: { type: SchemaType.STRING },
-          role: { type: SchemaType.STRING },
-          duration: { type: SchemaType.STRING },
-          description: { type: SchemaType.STRING }
-        },
-        required: ["company", "role"]
-      }
-    },
-    projects: {
-      type: SchemaType.ARRAY,
-      items: {
-        type: SchemaType.OBJECT,
-        properties: {
-          name: { type: SchemaType.STRING },
-          description: { type: SchemaType.STRING },
-          contributors: {
-            type: SchemaType.ARRAY,
-            items: { type: SchemaType.STRING }
-          }
-        }
-      }
-    },
-    education: {
-      type: SchemaType.ARRAY,
-      items: {
-        type: SchemaType.OBJECT,
-        properties: {
-          school: { type: SchemaType.STRING },
-          degree: { type: SchemaType.STRING },
-          field: { type: SchemaType.STRING }
-        }
-      }
-    },
-    certifications: {
-      type: SchemaType.ARRAY,
-      items: { type: SchemaType.STRING }
-    },
-    volunteer: {
-      type: SchemaType.ARRAY,
-      items: { type: SchemaType.STRING }
-    },
-    recommendations_summary: {
-      type: SchemaType.STRING,
-      description: "Summary of any recommendations if present"
-    }
-  },
-  required: ["raw_text", "identity", "analysis", "skills", "experience"]
-};
-
-// ============================================================================
-// GEMINI MODELS
-// ============================================================================
-
-// Model for resume extraction with schema validation
-const resumeModel = genAI.getGenerativeModel({
+const unifiedModel = genAI.getGenerativeModel({
   model: "gemini-1.5-flash",
   generationConfig: {
     responseMimeType: "application/json",
-    responseSchema: resumeSchema as any
+    responseSchema: unifiedProfileSchema as any
   }
 });
 
-// Model for LinkedIn extraction with schema validation
-const linkedinModel = genAI.getGenerativeModel({
-  model: "gemini-1.5-flash",
-  generationConfig: {
-    responseMimeType: "application/json",
-    responseSchema: linkedinSchema as any
-  }
-});
-
-export const maxDuration = 60;
-
-// Extract and normalize Resume PDF using schema-validated Gemini model
-async function extractAndNormalizeResume(base64: string): Promise<{ raw: string; normalized: any } | null> {
-  try {
-    console.log("Extracting and normalizing resume PDF with schema validation...");
-
-    const result = await resumeModel.generateContent([
-      {
-        inlineData: {
-          mimeType: "application/pdf",
-          data: base64
-        }
-      },
-      {
-        text: `Extract ALL content from this resume PDF.
-
-IMPORTANT INSTRUCTIONS:
-1. Extract the complete raw text preserving structure
-2. Identify the person's identity (name, email, phone, linkedin, location)
-3. ANALYZE their career: determine seniority level, primary role, voice/writing tone, years of experience
-4. For SKILLS: separate verified skills (actually used in projects/experience) from all keywords mentioned
-5. Extract ALL work experience with company, role, dates, descriptions, and key achievements
-6. Extract ALL projects with tech stacks and any metrics (users, stars, awards)
-7. Extract education and certifications
-
-Be thorough and preserve specific metrics, technologies, and achievements.`
-      }
-    ]);
-
-    const parsed = JSON.parse(result.response.text());
-
-    console.log(`Resume extracted: ${parsed.raw_text?.length || 0} chars`);
-    console.log(`  - Analysis: ${parsed.analysis?.seniority_level} ${parsed.analysis?.primary_role}`);
-    console.log(`  - Experience: ${parsed.experience?.length || 0} roles`);
-    console.log(`  - Skills: ${parsed.skills?.verified_hard_skills?.length || 0} verified, ${parsed.skills?.all_keywords?.length || 0} total`);
-
-    return {
-      raw: parsed.raw_text || '',
-      normalized: parsed
-    };
-  } catch (e: any) {
-    console.error("Resume extraction/normalization error:", e.message);
-    console.error("Error stack:", e.stack);
+async function parseUnifiedProfile(resumeBase64: string | null, linkedinBase64: string | null) {
+  // CRITICAL FIX: Guard against missing files
+  if (!resumeBase64 && !linkedinBase64) {
+    console.warn("No documents provided to parser.");
     return null;
   }
-}
 
-// Extract and normalize LinkedIn PDF using schema-validated Gemini model
-async function extractAndNormalizeLinkedin(base64: string): Promise<{ raw: string; normalized: any } | null> {
   try {
-    console.log("Extracting and normalizing LinkedIn PDF with schema validation...");
+    console.log("Starting Unified Gemini Ingestion...");
+    
+    const parts: any[] = [];
+    let instructions = `
+    You are the Chief Talent Architect for the Doppel Network.
+    You have been provided with one or more sources of data for a user.
+    
+    **YOUR GOAL:** Create a single, deduplicated "Golden Record" JSON profile.
+    `;
 
-    const result = await linkedinModel.generateContent([
-      {
+    if (resumeBase64) {
+      parts.push({
         inlineData: {
           mimeType: "application/pdf",
-          data: base64
+          data: resumeBase64
         }
-      },
-      {
-        text: `Extract ALL content from this LinkedIn profile PDF.
+      });
+      instructions += `\n- SOURCE 1: Resume PDF (Treat as ground truth for technical details and specific bullet points).`;
+    }
 
-IMPORTANT INSTRUCTIONS:
-1. Extract the complete raw text preserving structure
-2. Identify the person's identity (name, headline, linkedin URL, location, about section)
-3. ANALYZE their career: determine seniority level, primary role, voice/writing tone, years of experience, network strength
-4. For SKILLS: identify verified skills (endorsed or demonstrated), all skills, and top endorsements
-5. Extract ALL work experience - focus on tech-related roles, include descriptions
-6. Extract projects with contributors if listed
-7. Extract education, certifications, and volunteer work
-8. Summarize any recommendations if present
+    if (linkedinBase64) {
+      parts.push({
+        inlineData: {
+          mimeType: "application/pdf",
+          data: linkedinBase64
+        }
+      });
+      instructions += `\n- SOURCE 2: LinkedIn Profile PDF (Treat as ground truth for Dates, Titles, and Social Proof metrics).`;
+    }
 
-Focus on tech-related experiences. Be thorough with details.`
-      }
-    ]);
+    instructions += `
+    **CRITICAL SYNTHESIS RULES:**
 
+    1. **The "Bouncer" Rule (Skill Verification):**
+       - Populate "verified_hard_skills" ONLY with technologies that are backed by evidence in EITHER source.
+       - Evidence means: The skill is used in a specific Project description OR a specific Work Experience bullet point.
+       - If a user lists "Rust" in a skills list but never mentions using it in a job or project, put it in "all_keywords" but NOT in "verified_hard_skills".
+
+    2. **Conflict Resolution:**
+       - **Dates:** If Resume and LinkedIn dates conflict, trust LinkedIn (usually more current).
+       - **Titles:** If Resume says "Founder" but LinkedIn says "Freelancer", trust the more modest title unless specific revenue/user metrics are found.
+       - **Merging:** Do not list the same job twice. Merge the descriptions to capture the most detail.
+
+    3. **Tone Analysis:**
+       - Read the summary and bullet points. Are they formal ("Spearheaded initiatives") or a builder ("Shipped v1 in 2 days")?
+       - Set "voice_tone" to: "Hacker", "Corporate", "Academic", or "Student".
+    `;
+
+    parts.push({ text: instructions });
+
+    const result = await unifiedModel.generateContent(parts);
     const parsed = JSON.parse(result.response.text());
 
-    console.log(`LinkedIn extracted: ${parsed.raw_text?.length || 0} chars`);
-    console.log(`  - Analysis: ${parsed.analysis?.seniority_level} ${parsed.analysis?.primary_role}`);
-    console.log(`  - Experience: ${parsed.experience?.length || 0} roles`);
-    console.log(`  - Skills: ${parsed.skills?.verified_skills?.length || 0} verified, ${parsed.skills?.all_skills?.length || 0} total`);
+    console.log(`Unified Parsing Complete.`);
+    console.log(`- Role: ${parsed.analysis?.primary_role}`);
+    console.log(`- Seniority: ${parsed.analysis?.seniority_level}`);
 
-    return {
-      raw: parsed.raw_text || '',
-      normalized: parsed
-    };
+    return parsed;
+
   } catch (e: any) {
-    console.error("LinkedIn extraction/normalization error:", e.message);
-    console.error("Error stack:", e.stack);
+    console.error("Unified Parsing Error:", e.message);
     return null;
   }
 }
@@ -377,11 +202,8 @@ export async function POST(req: Request) {
       linkedinBase64,
       githubUrl,
       xUrl,
-      googleCalendarUrl,
       networkingGoals,
-      voiceSignature,
-      interests, // Soft interests - hobbies, passions (skills come from documents)
-      skillsDesired, // For hiring: skills they're looking for
+      skillsDesired,
       locationDesired,
     } = await req.json();
 
@@ -389,125 +211,76 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing userId" }, { status: 400 });
     }
 
-    console.log(`Processing onboarding for user: ${userId}`);
-
-    // Parse and normalize PDFs server-side
-    let resumeText: string | null = null;
-    let resumeNormalized: any = null;
-    let linkedinText: string | null = null;
-    let linkedinNormalized: any = null;
-    let extractedLinkedinUrl: string | null = null;
-
-    // Process resume and LinkedIn in parallel
-    const [resumeResult, linkedinResult] = await Promise.all([
-      resumeBase64 ? extractAndNormalizeResume(resumeBase64) : Promise.resolve(null),
-      linkedinBase64 ? extractAndNormalizeLinkedin(linkedinBase64) : Promise.resolve(null)
-    ]);
-
-    if (resumeResult) {
-      resumeText = resumeResult.raw;
-      resumeNormalized = resumeResult.normalized;
-      console.log(`Parsed resume: ${resumeText?.length || 0} chars, normalized: ${!!resumeNormalized}`);
-
-      // Extract LinkedIn URL from resume identity if present
-      if (resumeNormalized?.identity?.linkedin_url) {
-        extractedLinkedinUrl = resumeNormalized.identity.linkedin_url;
+    // 1. Parse Data (if files exist)
+    let unifiedProfile = null;
+    if (resumeBase64 || linkedinBase64) {
+      unifiedProfile = await parseUnifiedProfile(resumeBase64, linkedinBase64);
+      
+      if (!unifiedProfile) {
+        throw new Error("Failed to parse profile documents.");
       }
     }
 
-    if (linkedinResult) {
-      linkedinText = linkedinResult.raw;
-      linkedinNormalized = linkedinResult.normalized;
-      console.log(`Parsed LinkedIn: ${linkedinText?.length || 0} chars, normalized: ${!!linkedinNormalized}`);
+    // 2. Prepare Update Object
+    const updatePayload: any = {
+      github_url: githubUrl || null,
+      networking_goals: networkingGoals || [],
+      skills_desired: skillsDesired || [],
+      location_desired: locationDesired || [],
+      ingestion_status: 'completed',
+    };
 
-      // Extract LinkedIn URL from LinkedIn PDF identity (takes priority)
-      if (linkedinNormalized?.identity?.linkedin_url) {
-        extractedLinkedinUrl = linkedinNormalized.identity.linkedin_url;
+    // If we parsed files, add that data to the payload
+    if (unifiedProfile) {
+      updatePayload.resume_normalized = unifiedProfile;
+      updatePayload.linkedin_url = unifiedProfile.identity?.linkedin_url || null;
+      updatePayload.skills = unifiedProfile.skills?.verified_hard_skills || [];
+      updatePayload.voice_signature = unifiedProfile.analysis?.voice_tone || "Neutral";
+      
+      // If user didn't provide GitHub manually, try to find it in the PDF
+      if (!githubUrl && unifiedProfile.identity?.github_url) {
+        updatePayload.github_url = unifiedProfile.identity.github_url;
       }
     }
 
-    // Save to database with normalized data
-    // Note: skills_possessed will be populated from document parsing (resume_normalized/linkedin_normalized)
-    // interests are soft/personal interests collected manually
     const { error: updateError } = await supabase
       .from('users')
-      .update({
-        resume_text: resumeText,
-        resume_normalized: resumeNormalized,
-        linkedin_text: linkedinText,
-        linkedin_normalized: linkedinNormalized,
-        linkedin_url: extractedLinkedinUrl,
-        github_url: githubUrl || null,
-        x_url: xUrl || null,
-        google_calendar_url: googleCalendarUrl || null,
-        networking_goals: networkingGoals || [],
-        voice_signature: voiceSignature || null,
-        interests: interests || [], // Soft interests (hobbies, passions)
-        skills_desired: skillsDesired || [], // For hiring: skills they want
-        location_desired: locationDesired || [],
-        ingestion_status: 'pending',
-      })
+      .update(updatePayload)
       .eq('id', userId);
 
     if (updateError) {
       throw new Error(`Database update failed: ${updateError.message}`);
     }
 
-    console.log("Onboarding data saved, triggering ingestion...");
+    console.log("Onboarding data saved successfully.");
 
-    // Trigger ingestion - MUST await for serverless environments (Vercel)
-    // Fire-and-forget doesn't work because the serverless function terminates after response
+    // 3. Trigger Vector Ingestion (Embedding)
     let ingestUrl: string;
     try {
       const url = new URL(req.url);
       ingestUrl = `${url.protocol}//${url.host}/api/ingest`;
-    } catch (urlError: any) {
-      console.error("Failed to construct ingestion URL:", urlError.message);
-      // Fallback to environment variable
-      const fallbackBase = process.env.NEXT_PUBLIC_SITE_URL 
-        || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
-      
-      if (!fallbackBase) {
-        console.error("No valid ingestion URL available");
-        return NextResponse.json({ success: true, warning: "Ingestion not triggered - manual trigger required" });
-      }
+    } catch (urlError) {
+      const fallbackBase = process.env.NEXT_PUBLIC_SITE_URL || `https://${process.env.VERCEL_URL}`;
       ingestUrl = `${fallbackBase}/api/ingest`;
     }
-    
-    console.log(`Triggering ingestion at: ${ingestUrl}`);
-    
-    try {
-      const ingestRes = await fetch(ingestUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: userId }),
-      });
-      
-      if (!ingestRes.ok) {
-        const errorText = await ingestRes.text();
-        console.error(`Ingestion API returned error: ${ingestRes.status} ${ingestRes.statusText}`);
-        console.error("Ingestion error response:", errorText);
-        // Still return success for onboarding, but note ingestion failed
-        return NextResponse.json({ 
-          success: true, 
-          warning: "Profile saved but persona generation failed. It will be retried.",
-          ingestionError: errorText 
-        });
-      }
-      
-      const ingestData = await ingestRes.json();
-      console.log("Ingestion completed successfully:", ingestData.success);
-      
-      return NextResponse.json({ success: true, ingestion: ingestData.success });
-    } catch (ingestError: any) {
-      console.error("Ingestion trigger failed:", ingestError.message);
-      console.error("Ingestion error stack:", ingestError.stack);
-      // Onboarding data is saved, persona can be generated later
-      return NextResponse.json({ 
-        success: true, 
-        warning: "Profile saved but persona generation failed. It will be retried." 
-      });
+
+    // We await this to ensure the process starts, but we don't block heavily
+    const ingestRes = await fetch(ingestUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: userId }),
+    });
+
+    if (!ingestRes.ok) {
+       console.warn("Ingestion trigger warning:", await ingestRes.text());
+       // We still return success because the user data IS saved, 
+       // but we might want to log this for the admin.
     }
+
+    return NextResponse.json({ 
+      success: true, 
+      profile: unifiedProfile 
+    });
 
   } catch (error: any) {
     console.error("Onboarding error:", error);
