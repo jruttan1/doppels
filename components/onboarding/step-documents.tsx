@@ -3,7 +3,7 @@
 import type React from "react"
 import { useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
-import { FileText, Github, Linkedin, Upload, X, ArrowRight, CheckCircle2, Loader2, Calendar } from "lucide-react"
+import { FileText, Github, Linkedin, Upload, X, ArrowRight, CheckCircle2, Loader2 } from "lucide-react"
 import type { SoulFileData } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -15,15 +15,11 @@ interface StepDocumentsProps {
 
 export function StepDocuments({ soulData, updateSoulData, onNext }: StepDocumentsProps) {
   const [githubUrl, setGithubUrl] = useState(soulData.githubUrl || "")
-  const [xUrl, setXUrl] = useState(soulData.xUrl || "")
-  const [googleCalendarUrl, setGoogleCalendarUrl] = useState(soulData.googleCalendarUrl || "")
   const [isDraggingResume, setIsDraggingResume] = useState(false)
   const [isDraggingLinkedin, setIsDraggingLinkedin] = useState(false)
   const [resumeFiles, setResumeFiles] = useState<File[]>([])
   const [linkedinFiles, setLinkedinFiles] = useState<File[]>([])
   const [githubFocused, setGithubFocused] = useState(false)
-  const [xFocused, setXFocused] = useState(false)
-  const [googleCalendarFocused, setGoogleCalendarFocused] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
 
@@ -117,13 +113,11 @@ export function StepDocuments({ soulData, updateSoulData, onNext }: StepDocument
       
       updateSoulData({
         githubUrl: githubUrl || undefined,
-        xUrl: xUrl || undefined,
-        googleCalendarUrl: googleCalendarUrl || undefined,
         documents: allDocs,
         // Store base64 for server-side parsing
         resumeBase64: resumeBase64 || undefined,
         linkedinBase64: linkedinBase64 || undefined,
-      } as Partial<SoulFileData>)
+      })
       
       onNext()
     } catch (error: any) {
@@ -261,8 +255,8 @@ export function StepDocuments({ soulData, updateSoulData, onNext }: StepDocument
         </div>
 
         {/* GitHub */}
-        <div className="rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-xl p-6">
-          <div className="flex items-center gap-3 mb-4">
+        <div className="rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-xl p-10">
+          <div className="flex items-center gap-3 mb-7">
             <Github className="w-5 h-5 text-white/50" />
             <span className="text-sm text-white/50">GitHub Profile</span>
           </div>
@@ -282,53 +276,6 @@ export function StepDocuments({ soulData, updateSoulData, onNext }: StepDocument
             />
           </div>
         </div>
-
-        {/* X (Twitter) */}
-        <div className="rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-xl p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <svg className="w-5 h-5 text-white/50" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-            </svg>
-            <span className="text-sm text-white/50">X (Twitter) Profile</span>
-          </div>
-          
-          <div className="relative">
-            <input
-              type="url"
-              placeholder="x.com/username"
-              value={xUrl}
-              onChange={(e) => setXUrl(e.target.value)}
-              onFocus={() => setXFocused(true)}
-              onBlur={() => setXFocused(false)}
-              className={cn(
-                "w-full h-14 bg-transparent border-0 border-b-2 text-lg placeholder:text-white/30 focus:outline-none transition-colors px-0",
-                xFocused ? "border-white/50" : "border-white/10"
-              )}
-            />
-          </div>
-        </div>
-
-        {/* Google Calendar */}
-        <div className="rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-xl p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <Calendar className="w-5 h-5 text-white/50" />
-            <span className="text-sm text-white/50">Google Calendar</span>
-          </div>
-          
-          <div className="relative">
-            <input
-              type="url"
-              placeholder="calendar.google.com/..."
-              value={googleCalendarUrl}
-              onChange={(e) => setGoogleCalendarUrl(e.target.value)}
-              onFocus={() => setGoogleCalendarFocused(true)}
-              onBlur={() => setGoogleCalendarFocused(false)}
-              className={cn(
-                "w-full h-14 bg-transparent border-0 border-b-2 text-lg placeholder:text-white/30 focus:outline-none transition-colors px-0",
-                googleCalendarFocused ? "border-white/50" : "border-white/10"
-              )}
-            />
-          </div>
         </div>
 
         {uploadError && (
@@ -357,6 +304,5 @@ export function StepDocuments({ soulData, updateSoulData, onNext }: StepDocument
           </Button>
         </div>
       </div>
-    </div>
   )
 }

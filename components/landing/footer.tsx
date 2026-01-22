@@ -26,10 +26,6 @@ export function Footer() {
 
           <div className="flex items-center gap-4">
             <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">
-              <Twitter className="w-5 h-5" />
-              <span className="sr-only">Twitter</span>
-            </Link>
-            <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">
               <Github className="w-5 h-5" />
               <span className="sr-only">GitHub</span>
             </Link>

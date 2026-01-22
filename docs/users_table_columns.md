@@ -20,7 +20,6 @@ Based on code analysis, here are all columns being used:
 
 ## URLs
 - `github_url` (text) - GitHub profile URL
-- `x_url` (text) - X/Twitter profile URL  
 - `linkedin_url` (text) - LinkedIn profile URL
 - `google_calendar_url` (text) - Google Calendar URL
 
@@ -56,5 +55,4 @@ ALTER TABLE users
   ADD COLUMN IF NOT EXISTS skills_desired jsonb DEFAULT '[]'::jsonb,
   ADD COLUMN IF NOT EXISTS location_desired jsonb DEFAULT '[]'::jsonb,
   ADD COLUMN IF NOT EXISTS ingestion_status text DEFAULT 'pending',
-  ADD COLUMN IF NOT EXISTS x_summary jsonb;
 ```

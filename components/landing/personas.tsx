@@ -1,30 +1,30 @@
 import { Badge } from "@/components/ui/badge"
-import { Rocket, Users, Network } from "lucide-react"
+import { Rocket, Briefcase, Search } from "lucide-react"
 
 const personas = [
   {
     icon: Rocket,
     title: "The Founder",
-    quote: "I need a technical co-founder who isn't risk-averse and ships fast.",
-    pain: "Spent 6 months on Twitter, met 47 people, found 0 matches.",
-    solution: "Doppel simulated 2,000+ conversations in a week. Found 3 perfect candidates.",
-    color: "from-orange-500/20 to-red-500/20",
+    quote: "I need a technical co-founder who ships fast and isn't afraid to break things.",
+    pain: "Spent 6 months networking. Met 50 people. Found 0 real matches.",
+    solution: "Doppel ran 2,000+ simulated intros in a week. Surfaced 3 perfect candidates.",
+    hoverBg: "bg-amber-950/30",
   },
   {
-    icon: Users,
-    title: "The Operator",
-    quote: "Looking for senior engineers who thrive in ambiguity.",
-    pain: "Recruiter spam is killing my inbox. Quality candidates don't respond.",
-    solution: "My agent only surfaces candidates whose agents confirm mutual interest.",
-    color: "from-blue-500/20 to-cyan-500/20",
+    icon: Briefcase,
+    title: "The Hiring Manager",
+    quote: "I'm drowning in unqualified applicants. The good ones never respond.",
+    pain: "Cold outreach gets 2% response rates. LinkedIn is a graveyard.",
+    solution: "Only see candidates whose agents already confirmed mutual interest. No more ghosting.",
+    hoverBg: "bg-stone-800/30",
   },
   {
-    icon: Network,
-    title: "The Networker",
-    quote: "I want to meet interesting people without 10 hours of coffee chats.",
-    pain: "Networking events are hit or miss. Mostly miss.",
-    solution: "Wake up to a curated list of high-compatibility intros, icebreakers included.",
-    color: "from-green-500/20 to-emerald-500/20",
+    icon: Search,
+    title: "The Builder",
+    quote: "I want to find a company that actually wants me, not just spray and pray.",
+    pain: "Applied to 200 jobs. Got 3 interviews. All were bad fits.",
+    solution: "My Doppel pre-screens opportunities 24/7. I only talk to companies worth my time.",
+    hoverBg: "bg-slate-800/30",
   },
 ]
 
@@ -38,7 +38,7 @@ export function Personas() {
           </Badge>
           <h2 className="text-3xl sm:text-4xl font-bold mb-4 text-balance">Built for Ambitious Professionals</h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            Whether you&apos;re building, hiring, or connecting — your Doppel works for you.
+            Whether you&apos;re building, hiring, or job hunting — your Doppel works while you sleep.
           </p>
         </div>
 
@@ -49,17 +49,17 @@ export function Personas() {
               className="relative glass rounded-2xl p-8 overflow-hidden group hover:scale-[1.01] transition-transform"
             >
               <div
-                className={`absolute inset-0 bg-gradient-to-br ${persona.color} opacity-0 group-hover:opacity-100 transition-opacity`}
+                className={`absolute inset-0 ${persona.hoverBg} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}
               />
 
               <div className="relative">
-                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-6">
-                  <persona.icon className="w-7 h-7 text-primary" />
+                <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-6">
+                  <persona.icon className="w-7 h-7 text-white/70" />
                 </div>
 
                 <h3 className="text-xl font-bold mb-4">{persona.title}</h3>
 
-                <blockquote className="text-lg italic text-foreground/90 mb-6 border-l-2 border-primary pl-4">
+                <blockquote className="text-lg italic text-foreground/90 mb-6 border-l-2 border-white/20 pl-4">
                   &ldquo;{persona.quote}&rdquo;
                 </blockquote>
 
@@ -69,8 +69,8 @@ export function Personas() {
                     <p className="text-sm text-muted-foreground">{persona.pain}</p>
                   </div>
                   <div>
-                    <p className="text-xs uppercase tracking-wider text-primary mb-1">With Doppel</p>
-                    <p className="text-sm">{persona.solution}</p>
+                    <p className="text-xs uppercase tracking-wider text-white/70 mb-1">With Doppel</p>
+                    <p className="text-sm text-white/80">{persona.solution}</p>
                   </div>
                 </div>
               </div>

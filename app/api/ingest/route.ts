@@ -101,7 +101,7 @@ GUIDELINES:
 
 CRITICAL REQUIREMENTS:
 1. **experience_log MUST be populated** - Extract ALL work experience from Resume.experience and LinkedIn.experience arrays. Format each as: "Role @ Company (StartDate-EndDate) - Detailed description with key achievements, metrics, and impact."
-2. **voice_snippet MUST be ONLY the user's original voice_signature** - Use the exact text from userMetadata.voice_signature. Do NOT combine with X/Twitter analysis or add any other text.
+2. **voice_snippet MUST be ONLY the user's original voice_signature** - Use the exact text from userMetadata.voice_signature. Do NOT add any other text.
 3. **project_list** - Include projects from Resume.projects (with tech_stack and metrics) AND GitHub repos formatted as: "Repo: name (Language) - Description with impact/stars if notable"
 4. **interests** - Combine from all sources: LinkedIn about section, GitHub topics, user metadata interests
 5. **Use the analysis layer** - If Resume or LinkedIn has analysis.seniority_level, analysis.primary_role, analysis.voice_tone - use these to inform the tagline and overall persona

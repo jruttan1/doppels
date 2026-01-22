@@ -50,8 +50,8 @@ const RELATED_INTERESTS: Record<string, string[]> = {
 
 export function StepInterests({ soulData, updateSoulData, onNext, onPrev }: StepInterestsProps) {
   const [interests, setInterests] = useState<string[]>(() => {
-    if (soulData.raw_assets?.interests && soulData.raw_assets.interests.length > 0) {
-      return soulData.raw_assets.interests
+    if (soulData.interests && soulData.interests.length > 0) {
+      return soulData.interests
     }
     return []
   })
@@ -114,10 +114,7 @@ export function StepInterests({ soulData, updateSoulData, onNext, onPrev }: Step
 
   const handleNext = () => {
     updateSoulData({
-      raw_assets: {
-        ...soulData.raw_assets,
-        interests,
-      },
+      interests,
     })
     onNext()
   }
