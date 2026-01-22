@@ -197,7 +197,6 @@ CRITICAL REQUIREMENTS:
 2. **Analysis Block:** You MUST estimate seniority level and years of experience based on the resume.
 3. **Experience Log:** Merge Resume & LinkedIn. Format: "Role @ Company (Dates) - High-impact details."
 4. **Projects:** Merge Resume & GitHub. Format: "Name (Tech Stack) - Description."
-5. **Raw Assets:** "voice_snippet" MUST be exactly the user provided text.
 `;
 
     console.log("Final synthesis with Gemini Pro...");
@@ -334,35 +333,35 @@ async function analyzeVoiceDNA(voiceSamples: string): Promise<any> {
   });
 
   const prompt = `
-You are an expert linguistic profiler and ghostwriter. 
-Your task is to analyze the provided writing samples and extract the user's unique "Voice DNA."
+You are an expert psychological profiler.
+Your goal is to build a "Digital Twin" model from the user's writing samples.
 
 **INPUT SAMPLES:**
 """
 ${voiceSamples}
 """
 
-**OBJECTIVE:**
-You must reverse-engineer the user's psychology. Distinguish between how they *perform* socially (Conversation Voice) and how they likely *process information* privately (Internal Monologue).
+**THE CHALLENGE:**
+The user writes in short, punchy bursts (e.g., one-sentence tweets).
+**DO NOT just copy their words.** You must infer the personality *behind* the brevity.
+* Does the brevity signal impatience? Efficiency? A "too cool to care" attitude?
+* Read between the lines. What are they *not* saying?
 
 **INSTRUCTIONS:**
 
 1. **internal_monologue** (The "Inner Voice"):
-   - Extract 3-5 thought fragments that represent their raw, unfiltered reaction to new information.
-   - **Crucial:** These should NOT be full sentences. They should be stream-of-consciousness.
-   - *Bad:* "I am skeptical about this person's claims because they lack evidence."
-   - *Good:* "no github link? huge red flag. probably a wrapper."
-   - *Good:* "obsessed with this UI. clean. simple. need to steal this interaction pattern."
-   - Capture their specific level of cynicism, optimism, or analytical depth.
+   - Generate 3-5 *new, hypothetical* thought fragments that this person *would* think, but didn't necessarily write.
+   - **Rule:** If they complain about "tutorial hell" in the samples, a valid thought might be: "docs are trash. just gonna read the source code." (Inference).
+   - Capture their specific level of cynicism, optimism, or chaos.
 
 2. **conversation_voice** (The "Social Mask"):
-   - **tone:** Specific adjectives (e.g., "Blunt but helpful," "High-energy hype," "Dry academic").
-   - **message_style:** Structural habits (e.g., "All lowercase," "Uses bullet points," "Starts with 'So,'").
-   - **vocabulary:** Extract ACTUAL words/slang they use (e.g., "shipping," "cooked," "lgtm," "context switching").
-   - **avoid:** List 3-5 things they effectively *never* say (e.g., "If they are a hacker, they likely never say 'synergize' or 'kindly do the needful'").
+   - **tone:** Don't just say "Casual." Go deeper: "Manic pixie dream dev," "Burned-out senior engineer," "High-agency builder."
+   - **message_style:** Describe the *structure*. (e.g., "Avoids capitalization to signal speed/authenticity," "Uses distinct lack of commas").
+   - **vocabulary:** Identify the *vibe* of their words (e.g., "Tech Twitter Slang," "Hacker News Cynicism"), then list 3-5 representative words.
+   - **avoid:** What would this person *cringe* at? (e.g., "Corporate pleasantries," "Long-winded explanations").
 
-**CONSTRAINT:**
-Do not hallucinate a personality. If the samples are dry/professional, the Voice DNA should reflect that. If they are chaotic/sarcastic, capture the chaos.
+**GOAL:**
+Create a profile that feels like a *caricature* of the user—turning their subtle traits into explicit instructions for an AI agent.
 `;
 
   const result = await voiceModel.generateContent(prompt);
