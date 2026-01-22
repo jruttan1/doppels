@@ -9,17 +9,23 @@ const supabase = createClient(
 );
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-// Gemini models
+// --- MODELS ---
+
+// Use FLASH for fast, simple tasks (Voice Analysis, Data Fetching)
 const flashModel = genAI.getGenerativeModel({
   model: "gemini-1.5-flash",
-  generationConfig: {
-    responseMimeType: "application/json"
-  }
+  generationConfig: { responseMimeType: "application/json" }
+});
+
+// Use PRO for the core synthesis (The "Soul")
+// This costs slightly more but produces significantly better personas
+const proModel = genAI.getGenerativeModel({
+  model: "gemini-1.5-pro", 
+  generationConfig: { responseMimeType: "application/json" }
 });
 
 // --- SCHEMAS ---
 
-// 1. Voice DNA Schema (Already existed)
 const voiceDnaSchema = {
   type: SchemaType.OBJECT,
   properties: {
@@ -40,7 +46,6 @@ const voiceDnaSchema = {
   }
 };
 
-// 2. NEW: Full Persona Schema (Moved out of prompt)
 const personaSchema = {
   type: SchemaType.OBJECT,
   properties: {
@@ -52,6 +57,15 @@ const personaSchema = {
         location: { type: SchemaType.STRING }
       },
       required: ["name", "tagline"]
+    },
+    // ADDED: The Analysis Block (Crucial for Matching)
+    analysis: {
+      type: SchemaType.OBJECT,
+      properties: {
+        seniority_level: { type: SchemaType.STRING, description: "Junior, Mid, Senior, Staff, Founder, Student" },
+        primary_role: { type: SchemaType.STRING, description: "e.g. Full Stack Engineer, Product Manager" },
+        years_experience: { type: SchemaType.NUMBER }
+      }
     },
     style: {
       type: SchemaType.OBJECT,
@@ -123,7 +137,6 @@ export async function POST(req: Request) {
 
     if (fetchError || !user) throw new Error(`User not found: ${fetchError?.message}`);
 
-    // Use pre-normalized data
     const normalizedResume = user.resume_normalized || null;
     const normalizedLinkedin = user.linkedin_normalized || null;
     const githubData = user.github_url ? await fetchGitHubData(user.github_url) : null;
@@ -132,14 +145,14 @@ export async function POST(req: Request) {
     console.log("Normalized LinkedIn:", normalizedLinkedin ? "✓" : "✗");
     console.log("Github Data:", githubData ? "✓" : "✗");
 
-    // Analyze voice DNA
+    // 2. ANALYZE VOICE (Using Flash is fine here, it's just extraction)
     let voiceDna = null;
     const voiceSamples = user.voice_signature;
     if (voiceSamples && voiceSamples.length > 50) {
       console.log("Analyzing Voice DNA...");
       try {
         voiceDna = await analyzeVoiceDNA(voiceSamples);
-        console.log("Voice DNA extracted:", voiceDna?.internal_monologue?.slice(0, 2));
+        console.log("Voice DNA extracted.");
       } catch (e: any) {
         console.error("Voice DNA analysis error:", e.message);
       }
@@ -151,14 +164,14 @@ export async function POST(req: Request) {
 
     const { resume_text, linkedin_text, resume_normalized, linkedin_normalized, github_url, persona, ...userMetadata } = user;
     
-    // --- UPDATED SYNTHESIS CALL ---
+    // --- UPDATED SYNTHESIS CALL (Using PRO Model) ---
     
-    // We instantiate a specific model instance for this call to attach the schema
+    // We attach the schema to the PRO model for high-fidelity reasoning
     const synthesisModel = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
+      model: "gemini-1.5-pro", 
       generationConfig: {
         responseMimeType: "application/json",
-        responseSchema: personaSchema as any // Attach the schema here
+        responseSchema: personaSchema as any 
       }
     });
 
@@ -178,23 +191,24 @@ Voice Analysis: ${voiceDna ? JSON.stringify(voiceDna, null, 2) : "Not provided"}
 
 CRITICAL REQUIREMENTS:
 1. **The "Style" Split:** You must distinguish between how the user *thinks* (Internal) and how they *talk* (External).
-   - If "Voice Analysis" is provided, map "internal_monologue" to "style.internal_monologue" and "conversation_voice" to "style.external_voice".
-   - If not provided, infer it from their resume/tweets.
-2. **Experience Log:** Merge Resume & LinkedIn. Format: "Role @ Company (Dates) - High-impact details."
-3. **Projects:** Merge Resume & GitHub. Format: "Name (Tech Stack) - Description."
-4. **Skills:** Prioritize verified hard skills.
+   - Use the provided Voice Analysis to populate the 'style' block.
+   - Internal Monologue: Cynical, raw, analytical.
+   - External Voice: Professional, polished, but authentic.
+2. **Analysis Block:** You MUST estimate seniority level and years of experience based on the resume.
+3. **Experience Log:** Merge Resume & LinkedIn. Format: "Role @ Company (Dates) - High-impact details."
+4. **Projects:** Merge Resume & GitHub. Format: "Name (Tech Stack) - Description."
 5. **Raw Assets:** "voice_snippet" MUST be exactly the user provided text.
 `;
 
-    console.log("Final synthesis with Gemini");
+    console.log("Final synthesis with Gemini Pro...");
     
     let finalPersona;
     try {
-      // Call the schema-aware model
       const result = await synthesisModel.generateContent(synthesisPrompt);
+      const text = result.response.text();
       
-      // No need for regex parsing, it's guaranteed JSON
-      finalPersona = JSON.parse(result.response.text());
+      // Safety: Clean the JSON before parsing
+      finalPersona = cleanJson(text);
       console.log("Successfully parsed persona JSON");
 
     } catch (geminiError: any) {
@@ -202,15 +216,7 @@ CRITICAL REQUIREMENTS:
       throw new Error(`Gemini API failed: ${geminiError.message}`);
     }
 
-    // Extract tagline
     const tagline = finalPersona?.identity?.tagline || null;
-
-    // Fallback for voice_dna (if schema missed it, though strict schema prevents this usually)
-    if (voiceDna && !finalPersona.voice_dna) {
-        // Note: Our new schema puts voice data inside 'style', 
-        // but if you need to attach the raw analysis object separately, you can do it here.
-        // finalPersona.voice_dna = voiceDna; 
-    }
 
     // Merge skills
     const existingSkills: string[] = user.skills || [];
@@ -219,8 +225,7 @@ CRITICAL REQUIREMENTS:
 
     console.log("Saving persona to database...");
     
-    // Save to db
-    const { error: updateError, data: updateData } = await supabase
+    const { error: updateError } = await supabase
       .from('users')
       .update({
         persona: finalPersona,
@@ -228,16 +233,13 @@ CRITICAL REQUIREMENTS:
         skills: mergedSkills,
         ingestion_status: 'complete'
       })
-      .eq('id', id)
-      .select();
+      .eq('id', id);
 
-    if (updateError) {
-      throw new Error(`Database update failed: ${updateError.message}`);
-    }
+    if (updateError) throw new Error(`Database update failed: ${updateError.message}`);
     
     console.log("Ingestion complete for:", id);
     
-    // Trigger auto-connect (Fire and Forget)
+    // Auto-connect Logic (Fire and Forget)
     (async () => {
       try {
         let autoConnectUrl = process.env.NEXT_PUBLIC_SITE_URL 
@@ -275,7 +277,19 @@ CRITICAL REQUIREMENTS:
   }
 }
 
-// --- GITHUB ---
+// --- HELPERS ---
+
+function cleanJson(text: string): any {
+  try {
+    // Remove Markdown code blocks if present (```json ... ```)
+    const cleaned = text.replace(/```(?:json)?|```/g, "").trim();
+    return JSON.parse(cleaned);
+  } catch (e) {
+    console.error("JSON Parse Error on text:", text);
+    throw new Error("Failed to parse AI response as JSON");
+  }
+}
+
 async function fetchGitHubData(url: string): Promise<any> {
   try {
     const match = url.match(/github\.com\/([^\/]+)/);
@@ -308,10 +322,11 @@ async function fetchGitHubData(url: string): Promise<any> {
   }
 }
 
-// --- VOICE DNA ANALYSIS ---
 async function analyzeVoiceDNA(voiceSamples: string): Promise<any> {
+  // Use PRO for this if you can afford the latency, otherwise Flash is okay-ish.
+  // Ideally, use the same model instance you defined earlier.
   const voiceModel = genAI.getGenerativeModel({
-    model: "gemini-1.5-flash",
+    model: "gemini-1.5-flash", // or "gemini-1.5-pro" for better nuance
     generationConfig: {
       responseMimeType: "application/json",
       responseSchema: voiceDnaSchema as any
@@ -319,18 +334,37 @@ async function analyzeVoiceDNA(voiceSamples: string): Promise<any> {
   });
 
   const prompt = `
-Analyze these writing samples to extract the person's Voice DNA.
+You are an expert linguistic profiler and ghostwriter. 
+Your task is to analyze the provided writing samples and extract the user's unique "Voice DNA."
 
-WRITING SAMPLES:
+**INPUT SAMPLES:**
 """
 ${voiceSamples}
 """
 
-Extract:
-1. **internal_monologue**: 3-5 short thought fragments.
-2. **conversation_voice**: Tone, style, vocab, avoid list.
+**OBJECTIVE:**
+You must reverse-engineer the user's psychology. Distinguish between how they *perform* socially (Conversation Voice) and how they likely *process information* privately (Internal Monologue).
+
+**INSTRUCTIONS:**
+
+1. **internal_monologue** (The "Inner Voice"):
+   - Extract 3-5 thought fragments that represent their raw, unfiltered reaction to new information.
+   - **Crucial:** These should NOT be full sentences. They should be stream-of-consciousness.
+   - *Bad:* "I am skeptical about this person's claims because they lack evidence."
+   - *Good:* "no github link? huge red flag. probably a wrapper."
+   - *Good:* "obsessed with this UI. clean. simple. need to steal this interaction pattern."
+   - Capture their specific level of cynicism, optimism, or analytical depth.
+
+2. **conversation_voice** (The "Social Mask"):
+   - **tone:** Specific adjectives (e.g., "Blunt but helpful," "High-energy hype," "Dry academic").
+   - **message_style:** Structural habits (e.g., "All lowercase," "Uses bullet points," "Starts with 'So,'").
+   - **vocabulary:** Extract ACTUAL words/slang they use (e.g., "shipping," "cooked," "lgtm," "context switching").
+   - **avoid:** List 3-5 things they effectively *never* say (e.g., "If they are a hacker, they likely never say 'synergize' or 'kindly do the needful'").
+
+**CONSTRAINT:**
+Do not hallucinate a personality. If the samples are dry/professional, the Voice DNA should reflect that. If they are chaotic/sarcastic, capture the chaos.
 `;
 
   const result = await voiceModel.generateContent(prompt);
-  return JSON.parse(result.response.text());
+  return cleanJson(result.response.text());
 }
