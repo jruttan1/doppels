@@ -98,14 +98,13 @@ export async function POST(req: Request) {
       usersToSimulate.map((partner) =>
         limit(async () => {
           try {
-            // Pre-create simulation row with 'running' status
+            // Pre-create simulation row
             const { data: sim, error: insertError } = await supabase
               .from('simulations')
               .insert({
                 participant1: me.id,
                 participant2: partner.id,
                 transcript: [],
-                status: 'running',
               })
               .select('id')
               .single();

@@ -19,7 +19,7 @@ export default async function DashboardPage() {
               <h1 className="text-3xl font-medium bg-gradient-to-r from-foreground via-foreground to-primary bg-clip-text">
                 Dashboard
               </h1>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground mb-3">
                 Your Doppel is exploring. Here&apos;s what it&apos;s found so far.
               </p>
             </div>

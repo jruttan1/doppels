@@ -13,14 +13,14 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 // Use FLASH for fast, simple tasks (Voice Analysis, Data Fetching)
 const flashModel = genAI.getGenerativeModel({
-  model: "gemini-1.5-flash",
+  model: "gemini-2.5-flash-lite",
   generationConfig: { responseMimeType: "application/json" }
 });
 
 // Use PRO for the core synthesis (The "Soul")
 // This costs slightly more but produces significantly better personas
 const proModel = genAI.getGenerativeModel({
-  model: "gemini-1.5-pro", 
+  model: "gemini-2.5-flash-lite", 
   generationConfig: { responseMimeType: "application/json" }
 });
 
@@ -168,7 +168,7 @@ export async function POST(req: Request) {
     
     // We attach the schema to the PRO model for high-fidelity reasoning
     const synthesisModel = genAI.getGenerativeModel({
-      model: "gemini-1.5-pro", 
+      model: "gemini-2.5-flash-lite", 
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: personaSchema as any 
@@ -325,7 +325,7 @@ async function analyzeVoiceDNA(voiceSamples: string): Promise<any> {
   // Use PRO for this if you can afford the latency, otherwise Flash is okay-ish.
   // Ideally, use the same model instance you defined earlier.
   const voiceModel = genAI.getGenerativeModel({
-    model: "gemini-1.5-flash", // or "gemini-1.5-pro" for better nuance
+    model: "gemini-2.5-flash-lite", // or "gemini-2.5-flash-lite" for better nuance
     generationConfig: {
       responseMimeType: "application/json",
       responseSchema: voiceDnaSchema as any

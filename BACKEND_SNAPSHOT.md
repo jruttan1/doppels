@@ -10,7 +10,7 @@ Doppel is a professional networking AI platform built on Next.js with TypeScript
 **Key Stack:**
 - **Runtime:** Node.js (Next.js 15+, Vercel-hosted)
 - **Database:** Supabase (PostgreSQL)
-- **AI Provider:** Google Gemini 1.5 Flash (gemini-1.5-flash)
+- **AI Provider:** Google Gemini 1.5 Flash (gemini-2.5-flash-lite)
 - **Orchestration:** Gumloop (email/workflow automation)
 - **Authentication:** Supabase Auth
 
@@ -154,7 +154,7 @@ Stateful AI agent class for conversation simulation.
 
 ## AI Model Configuration
 
-**Primary Model:** `gemini-1.5-flash`
+**Primary Model:** `gemini-2.5-flash-lite`
 - Used across all endpoints
 - Structured output with JSON schemas
 - ~1M tokens context window

@@ -18,7 +18,6 @@ export async function syncToDbNode(
       .from('simulations')
       .update({
         transcript: state.transcript,
-        updated_at: new Date().toISOString(),
       })
       .eq('id', state.simulationId);
 

@@ -1,7 +1,19 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 
-// Initialize Gemini AI
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+// Lazy initialization to ensure env vars are loaded
+let genAI: GoogleGenerativeAI | null = null;
+let model: GenerativeModel | null = null;
+
+function getModel(): GenerativeModel {
+  if (!model) {
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error('GEMINI_API_KEY environment variable is not set');
+    }
+    genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+  }
+  return model;
+}
 
 export interface GenerateOptions {
   systemPrompt: string;
@@ -27,7 +39,7 @@ export async function generateWithRetry(
   options: GenerateOptions,
   maxRetries = 3
 ): Promise<string> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  const model = getModel();
 
   let retries = 0;
 
@@ -83,7 +95,7 @@ export async function generateWithRetry(
 export async function analyzeTranscript(
   transcript: Array<{ speaker: string; text: string }>
 ): Promise<AnalysisResult> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  const model = getModel();
 
   let retries = 0;
   const maxRetries = 3;

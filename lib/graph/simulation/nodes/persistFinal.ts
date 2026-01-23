@@ -17,14 +17,7 @@ export async function persistFinalNode(
     transcript: state.transcript,
     score: state.analysis?.score ?? 0,
     takeaways: state.analysis?.takeaways ?? [],
-    status: state.error ? 'failed' : 'complete',
-    updated_at: new Date().toISOString(),
   };
-
-  // Include termination reason if available
-  if (state.terminationReason) {
-    updateData.termination_reason = state.terminationReason;
-  }
 
   try {
     const { error } = await supabase
