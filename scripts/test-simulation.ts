@@ -77,7 +77,7 @@ async function runRealTest() {
       name: userB.name || 'User B',
       persona: { id: userB.id, name: userB.name || 'User B', ...userB.persona },
     },
-    maxTurns: 4, // Keep it short
+    maxTurns: 15, // Keep it short
   };
 
   console.log('💬 Conversation Started...\n');

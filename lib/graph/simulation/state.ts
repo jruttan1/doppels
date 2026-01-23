@@ -62,7 +62,7 @@ export const SimulationState = Annotation.Root({
   // Configuration
   maxTurns: Annotation<number>({
     reducer: (_, update) => update,
-    default: () => 5,
+    default: () => 15,
   }),
 });
 

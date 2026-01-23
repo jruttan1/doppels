@@ -141,7 +141,7 @@ export async function POST(req: Request) {
                 name: partner.name || 'Partner',
                 persona: partnerPersona,
               },
-              maxTurns: 5,
+              maxTurns: 15,
             };
 
             // Invoke graph - runs to completion, syncToDb updates DB after each turn
