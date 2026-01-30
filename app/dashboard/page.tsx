@@ -1,6 +1,6 @@
 import { DashboardShell } from "@/components/dashboard/shell"
 import { NetworkGraph } from "@/components/dashboard/network-graph"
-import { AgentStatus } from "@/components/dashboard/agent-status"
+import { Orchestrator } from "@/components/dashboard/orchestrator"
 
 export const metadata = {
   title: "Dashboard | Doppel",
@@ -24,7 +24,7 @@ export default async function DashboardPage() {
             </div>
           </div>
           <div className="mb-2">
-            <AgentStatus />
+            <Orchestrator />
           </div>
         </div>
 

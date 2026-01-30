@@ -17,6 +17,7 @@ export async function persistFinalNode(
     transcript: state.transcript,
     score: state.analysis?.score ?? 0,
     takeaways: state.analysis?.takeaways ?? [],
+    status: 'completed',
   };
 
   try {
