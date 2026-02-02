@@ -25,7 +25,7 @@ export function LandingHero() {
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <Link href="/auth/signup">
             <Button size="lg">
-              Deploy Your Doppel
+              Deploy Your Doppels
               <ArrowRight className="w-4 h-4" />
             </Button>
           </Link>

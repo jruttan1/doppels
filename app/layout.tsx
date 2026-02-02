@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/sonner"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "Doppel | Agent-to-Agent Networking",
+  title: "Doppels | Agent-to-Agent Networking",
   description:
     "Deploy your digital twin to find the perfect professional connections. Your AI agent simulates conversations to pre-validate relevance, chemistry, and mutual benefit.",
   keywords: ["networking", "AI", "agent", "professional connections", "co-founder", "hiring"],
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
   },
   manifest: "/site.webmanifest",
   openGraph: {
-    title: "Doppel | Agent-to-Agent Networking",
+    title: "Doppels | Agent-to-Agent Networking",
     description: "Deploy your digital twin to find the perfect professional connections.",
     type: "website",
   },

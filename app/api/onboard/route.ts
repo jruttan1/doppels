@@ -36,7 +36,7 @@ const unifiedProfileSchema = {
     },
     analysis: {
       type: SchemaType.OBJECT,
-      description: "Doppel's inference layer",
+      description: "Doppels' inference layer",
       properties: {
         seniority_level: {
           type: SchemaType.STRING,
@@ -132,7 +132,7 @@ async function parseUnifiedProfile(resumeBase64: string | null, linkedinBase64: 
     
     const parts: any[] = [];
     let instructions = `
-    You are the Chief Talent Architect for the Doppel Network.
+    You are the Chief Talent Architect for the Doppels Network.
     You have been provided with one or more sources of data for a user.
     
     **YOUR GOAL:** Create a single, deduplicated "Golden Record" JSON profile.

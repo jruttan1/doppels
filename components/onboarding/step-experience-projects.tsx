@@ -68,7 +68,7 @@ export function StepExperienceProjects({ soulData, updateSoulData, onNext, onPre
         </div>
         <h1 className="text-3xl font-bold mb-2">Your Experience & Projects</h1>
         <p className="text-muted-foreground">
-          Share your work history and notable projects. This helps your Doppel understand your background.
+          Share your work history and notable projects. This helps your Doppels understand your background.
         </p>
       </div>
 

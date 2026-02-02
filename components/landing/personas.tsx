@@ -7,7 +7,7 @@ const personas = [
     title: "The Founder",
     quote: "I need a technical co-founder who ships fast and isn't afraid to break things.",
     pain: "Spent 6 months networking. Met 50 people. Found 0 real matches.",
-    solution: "Doppel ran 2,000+ simulated intros in a week. Surfaced 3 perfect candidates.",
+    solution: "Doppels ran 2,000+ simulated intros in a week. Surfaced 3 perfect candidates.",
   },
   {
     icon: Briefcase,
@@ -21,7 +21,7 @@ const personas = [
     title: "The Builder",
     quote: "I want to find a company that actually wants me, not just spray and pray.",
     pain: "Applied to 200 jobs. Got 3 interviews. All were bad fits.",
-    solution: "My Doppel pre-screens opportunities 24/7. I only talk to companies worth my time.",
+    solution: "My Doppels pre-screens opportunities 24/7. I only talk to companies worth my time.",
   },
 ]
 
@@ -39,7 +39,7 @@ export function Personas() {
           </div>
           <h2 className="text-3xl sm:text-4xl font-bold mb-4 text-balance">Built for Ambitious Professionals</h2>
           <p className="text-foreground/70 max-w-2xl mx-auto font-normal">
-            Whether you&apos;re building, hiring, or job hunting — your Doppel works while you sleep.
+            Whether you&apos;re building, hiring, or job hunting — your Doppels works while you sleep.
           </p>
         </div>
 
@@ -67,7 +67,7 @@ export function Personas() {
                   <p className="text-sm text-foreground/70 font-normal">{persona.pain}</p>
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-wider text-foreground/50 mb-1">With Doppel</p>
+                  <p className="text-xs uppercase tracking-wider text-foreground/50 mb-1">With Doppels</p>
                   <p className="text-xs text-foreground/50 font-normal">{persona.solution}</p>
                 </div>
               </div>

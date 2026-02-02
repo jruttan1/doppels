@@ -99,7 +99,7 @@ export function StepVibeCheck({ soulData, updateSoulData, onNext, onPrev }: Step
           Set Your Vibe
         </h1>
         <p className="text-white/50 max-w-md mx-auto">
-          Paste your best tweets, posts, or hot takes. We'll extract your Voice DNA to make your Doppel sound exactly like you.
+          Paste your best tweets, posts, or hot takes. We'll extract your Voice DNA to make your Doppels sound exactly like you.
         </p>
       </div>
 

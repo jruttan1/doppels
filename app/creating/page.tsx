@@ -19,7 +19,7 @@ const LOADING_PHRASES = [
 const TIPS = [
   "Your agent will reach out to potential connections on your behalf",
   "It learns from your writing style to match your authentic voice",
-  "Quality connections over quantity — that's the Doppel way",
+  "Quality connections over quantity — that's the Doppels way",
   "Your agent never sleeps, but it does respect boundaries",
 ]
 
@@ -198,7 +198,7 @@ export default function CreatingPage() {
             <span className="text-red-400">Something went wrong</span>
           ) : (
             <>
-              Awakening Your <span className="teal-glow">Doppel</span>
+              Awakening Your <span className="teal-glow">Doppels</span>
             </>
           )}
         </h1>

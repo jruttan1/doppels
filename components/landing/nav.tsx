@@ -12,8 +12,8 @@ export function LandingNav() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <Link href="/" className="flex items-center gap-2">
-            <Image src="/logo.svg" alt="Doppel" width={48} height={48} />
-            <span className="text-xl font-bold tracking-tight font-serif">Doppel</span>
+            <Image src="/logo.svg" alt="Doppels" width={48} height={48} />
+            <span className="text-xl font-bold tracking-tight font-serif">Doppels</span>
           </Link>
 
           {/* Desktop: inline links */}

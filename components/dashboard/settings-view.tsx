@@ -514,7 +514,7 @@ export function SettingsView() {
         <Card className="bg-card border-border shadow-md">
           <CardHeader>
             <CardTitle>Your Profile</CardTitle>
-            <CardDescription>This is how others see you on Doppel.</CardDescription>
+            <CardDescription>This is how others see you on Doppels.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
             {/* Avatar */}
@@ -831,14 +831,14 @@ export function SettingsView() {
         <Card className="bg-card border-border shadow-md">
           <CardHeader>
             <CardTitle>Agent Settings</CardTitle>
-            <CardDescription>Control how your Doppel behaves and represents you.</CardDescription>
+            <CardDescription>Control how your Doppels behaves and represents you.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/30 border border-border">
               <div className="space-y-1">
                 <Label className="text-base font-medium">Agent Status</Label>
                 <p className="text-sm text-muted-foreground">
-                  {agentActive ? "Your Doppel is actively networking for you" : "Your Doppel is paused"}
+                  {agentActive ? "Your Doppels is actively networking for you" : "Your Doppels is paused"}
                 </p>
               </div>
               <Switch checked={agentActive} onCheckedChange={setAgentActive} />
@@ -862,7 +862,7 @@ export function SettingsView() {
                 <Label className="text-base font-medium">Voice Signature</Label>
               </div>
               <p className="text-sm text-muted-foreground">
-                Write naturally so your Doppel sounds like you.
+                Write naturally so your Doppels sounds like you.
               </p>
               <p className="text-xs text-muted-foreground/70">
                 Complete at least the first question. Additional questions are optional.
@@ -1061,7 +1061,7 @@ export function SettingsView() {
         <Card className="bg-card border-border shadow-md">
           <CardHeader>
             <CardTitle>Networking Goals</CardTitle>
-            <CardDescription>What are you looking to achieve? Be specific so your Doppel can find the right connections.</CardDescription>
+            <CardDescription>What are you looking to achieve? Be specific so your Doppels can find the right connections.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Instructions */}
@@ -1149,7 +1149,7 @@ export function SettingsView() {
               <div className="text-center py-8 text-muted-foreground">
                 <Target className="w-12 h-12 mx-auto mb-3 opacity-50" />
                 <p>No goals added yet</p>
-                <p className="text-sm">Add your networking goals to help your Doppel find the right connections</p>
+                <p className="text-sm">Add your networking goals to help your Doppels find the right connections</p>
               </div>
             )}
             <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2">

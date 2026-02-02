@@ -51,7 +51,7 @@ export function StepFilters({ soulData, updateSoulData, onNext, onPrev }: StepFi
         </div>
         <h1 className="text-3xl font-bold mb-2">Set Your Filters</h1>
         <p className="text-muted-foreground">
-          Define hard requirements. Your Doppel won&apos;t waste time on connections that don&apos;t meet these
+          Define hard requirements. Your Doppels won&apos;t waste time on connections that don&apos;t meet these
           criteria.
         </p>
       </div>

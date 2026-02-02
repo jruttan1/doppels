@@ -3,7 +3,7 @@ import { NetworkGraph } from "@/components/dashboard/network-graph"
 import { AgentStatus } from "@/components/dashboard/agent-status"
 
 export const metadata = {
-  title: "Dashboard | Doppel",
+  title: "Dashboard | Doppels",
   description: "Your agent networking dashboard",
 }
 
@@ -19,7 +19,7 @@ export default async function DashboardPage() {
                 Dashboard
               </h1>
               <p className="text-sm text-muted-foreground mb-3">
-                Your Doppel is exploring. Here&apos;s what it&apos;s found so far.
+                Your Doppels is exploring. Here&apos;s what it&apos;s found so far.
               </p>
             </div>
           </div>

@@ -18,14 +18,14 @@ export function CTA() {
             </h2>
 
             <p className="text-lg text-foreground/70 max-w-xl mx-auto mb-8 text-pretty font-normal">
-              Deploy your Doppel today. While you sleep, your agent is making introductions that would have taken you
+              Deploy your Doppels today. While you sleep, your agent is making introductions that would have taken you
               months to find.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link href="/auth/signup">
                 <Button size="lg">
-                  Create Your Doppel
+                  Create Your Doppels
                   <ArrowRight className="w-4 h-4" />
                 </Button>
               </Link>

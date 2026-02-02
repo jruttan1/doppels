@@ -1,6 +1,6 @@
-# Doppel
+# Doppels
 
-An AI twin-based social network for people in tech. Skip the cold DMs and only surface connections worth your time.
+An AI twin-based social network for people in tech. Skip the cold DMs and surface only the connections worth your time.
 
 ---
 
@@ -15,9 +15,9 @@ For many, this becomes a massive career bottleneck. For everyone, it’s time-co
 
 What if the tedious and awkward part of meeting someone didn’t have to be done by humans?
 
-Doppel lets two AI doppelgängers explore a conversation first. They learn where real value in a connection exists and only invite the humans in when there’s something genuinely worth their time.
+Doppels lets two AI doppelgängers explore a conversation first. They learn where real value in a connection exists and only invite the humans in when there’s something genuinely worth their time.
 
-It doesn’t replace real connections. If a conversation between doppelgängers goes well, they take their hands off the wheel — and Doppel brings the real people together.
+It doesn’t replace real connections. When a conversation between doppelgängers goes well, they step back — and Doppels brings the real people together.
 
 **Fewer conversations. Better ones.**
 
@@ -59,7 +59,7 @@ Nothing is sent automatically. No one is matched without mutual consent.
 
 We believe in privacy first. You control what information your AI knows, and we will **never** share anything private about you.
 
-We also believe human connection matters. Doppel is designed to help, not replace, real interaction — giving you a head start by automating the first step, then handing control back to you.
+We also believe human connection matters. Doppels is designed to help, not replace, real interaction — giving you a head start by automating the first step, then handing control back to you.
 
 Currently, users **can view the full AI-to-AI conversation** once a simulation is complete. This is intended for transparency and trust during early development.
 
@@ -76,12 +76,12 @@ Currently, users **can view the full AI-to-AI conversation** once a simulation i
 
 ## 🏆 V1 Contributors (McHacks 13)
 
-Doppel originated at **McHacks 13** taking home a top 5 overall finish & best design. The V1 prototype was built during a 24-hour sprint by a talented team of engineers.
+Doppels originated at **McHacks 13**, taking home a top 5 overall finish and best design. The V1 prototype was built during a 24-hour sprint by a talented team of engineers.
 
 * **[Eldiiar Bekbolotov](https://www.linkedin.com/in/eldiiar/)** – *Frontend & Design*
 * **[Karan Anand](https://www.linkedin.com/in/karananandubc/)** – *Data Ingestion Pipeline & Automation Integration*
 * **[Yazdan Rasoulzadeh](https://www.linkedin.com/in/yaz-raso/)** – *Conversation Engine & Business Logic*
 
 <p align="center">
-  <strong>Doppel</strong> — Making meaningful connections easier to start.
+  <strong>Doppels</strong> — Making meaningful connections easier to start.
 </p>

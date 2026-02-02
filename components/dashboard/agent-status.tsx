@@ -190,7 +190,7 @@ export function AgentStatus() {
         
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-semibold">Your Doppel</h3>
+                <h3 className="font-semibold">Your Doppels</h3>
                 <Badge
                   variant={isActive ? "default" : "secondary"}
                   className={isActive ? "bg-teal-500/10 text-teal-500 hover:bg-teal-500/20" : ""}

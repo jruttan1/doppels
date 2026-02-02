@@ -8,8 +8,8 @@ export function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row items-center justify-between gap-8">
           <div className="flex items-center gap-2">
-            <Image src="/logo.svg" alt="Doppel" width={24} height={24} />
-            <span className="text-xl font-bold font-mono">Doppel</span>
+            <Image src="/logo.svg" alt="Doppels" width={24} height={24} />
+            <span className="text-xl font-bold font-mono">Doppels</span>
           </div>
 
           <div className="flex items-center gap-8 text-sm text-muted-foreground">
@@ -37,7 +37,7 @@ export function Footer() {
         </div>
 
         <div className="mt-8 pt-8 border-t border-border text-center text-sm text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} Doppel. Agent-to-agent networking.</p>
+          <p>&copy; {new Date().getFullYear()} Doppels. Agent-to-agent networking.</p>
         </div>
       </div>
     </footer>

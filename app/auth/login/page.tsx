@@ -2,8 +2,8 @@ import { LoginForm } from "@/components/auth/login-form"
 import { AuthLayout } from "@/components/auth/auth-layout"
 
 export const metadata = {
-  title: "Sign In | Doppel",
-  description: "Sign in to your Doppel account",
+  title: "Sign In | Doppels",
+  description: "Sign in to your Doppels account",
 }
 
 export default function LoginPage() {

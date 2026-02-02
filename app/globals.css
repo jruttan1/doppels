@@ -4,7 +4,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* New Doppel dark theme with cyan/teal accents */
+  /* New Doppels dark theme with cyan/teal accents */
   --background: oklch(0.08 0.01 260);
   --foreground: oklch(0.95 0.01 260);
   --card: oklch(0.12 0.015 260);
@@ -31,7 +31,7 @@
   --chart-5: oklch(0.6 0.22 320);
   --radius: 0.75rem;
 
-  /* Doppel specific colors */
+  /* Doppels specific colors */
   --glow: oklch(0.75 0.2 185);
   --glow-dim: oklch(0.4 0.1 185);
   --node-active: oklch(0.8 0.18 185);
@@ -151,7 +151,7 @@
   text-shadow: 0 0 20px rgba(45, 212, 191, 0.8), 0 0 40px rgba(45, 212, 191, 0.6), 0 0 60px rgba(45, 212, 191, 0.4);
 }
 
-/* Custom animations for Doppel */
+/* Custom animations for Doppels */
 @keyframes pulse-glow {
   0%,
   100% {

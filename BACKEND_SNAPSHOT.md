@@ -1,11 +1,11 @@
-# Doppel Backend Architecture Snapshot
+# Doppels Backend Architecture Snapshot
 **Date:** January 21, 2026
 
 ---
 
 ## System Overview
 
-Doppel is a professional networking AI platform built on Next.js with TypeScript. The backend orchestrates AI-powered profile generation, agent conversations, and connection matching using Google Gemini API.
+Doppels is a professional networking AI platform built on Next.js with TypeScript. The backend orchestrates AI-powered profile generation, agent conversations, and connection matching using Google Gemini API.
 
 **Key Stack:**
 - **Runtime:** Node.js (Next.js 15+, Vercel-hosted)
@@ -64,20 +64,20 @@ Doppel is a professional networking AI platform built on Next.js with TypeScript
 ---
 
 ### 3. **POST /api/simulation/auto-connect** - Agent Conversations
-**Purpose:** Run AI-to-AI coffee chat simulations between two DoppelAgents.
+**Purpose:** Run AI-to-AI coffee chat simulations between two Doppels agents.
 
 **Flow:**
 1. Fetch initiator's profile + persona from `users` table
 2. Find top N candidate matches from `connections` table
 3. For each candidate:
-   - Instantiate two DoppelAgent objects with their personas
+   - Instantiate two agent objects with their personas
    - Run 6-turn conversation (Initiator → Target → repeat)
    - Capture transcript
 4. Score conversation (0-100) using Judge agent
 5. Extract takeaways (key shared interests, opportunities)
 6. Store in `simulations` table with score & transcript
 
-**DoppelAgent Class:**
+**Agent Class (DoppelAgent):**
 - Constructor takes `AgentPersona` (ID, name, identity, networking goals, skills, raw assets)
 - `reply()` method: Generates next message using Gemini
 - Maintains conversation history (last 6 messages)
@@ -114,7 +114,7 @@ Doppel is a professional networking AI platform built on Next.js with TypeScript
 ## Core Libraries
 
 ### DoppelAgent (`/lib/DoppelAgent.ts`)
-Stateful AI agent class for conversation simulation.
+Stateful AI agent class used by Doppels for conversation simulation.
 
 **Key Methods:**
 - `constructor(persona: AgentPersona)` - Initialize with user profile
@@ -181,7 +181,7 @@ APIFY_API_TOKEN=apify_api_...                              # X/Twitter data (leg
 ## Error Handling & Reliability
 
 **Rate Limiting:**
-- Auto-retry logic in DoppelAgent.reply() (max 3 attempts)
+- Auto-retry logic in the agent `reply()` method (max 3 attempts)
 - Exponential backoff: 2^retries * 1000ms
 
 **Validation:**

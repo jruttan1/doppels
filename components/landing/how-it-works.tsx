@@ -10,7 +10,7 @@ const steps = [
   {
     icon: Brain,
     title: "Your Agent Awakens",
-    description: "Your Doppel learns your goals. Looking for a co-founder? Hiring? Seeking advisors?",
+    description: "Your Doppels learns your goals. Looking for a co-founder? Hiring? Seeking advisors?",
     detail: "Set hard filters (location, skills) and soft preferences (culture fit, working style).",
   },
   {
@@ -23,7 +23,7 @@ const steps = [
     icon: MessageCircle,
     title: "Real Matches Surface",
     description: "Only high-compatibility connections reach you. With icebreakers ready to go.",
-    detail: "Book coffee chats directly. Your Doppel did the vetting.",
+    detail: "Book coffee chats directly. Your Doppels did the vetting.",
   },
 ]
 
