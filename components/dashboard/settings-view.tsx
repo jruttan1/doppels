@@ -514,7 +514,7 @@ export function SettingsView() {
         <Card className="bg-card border-border shadow-md">
           <CardHeader>
             <CardTitle>Your Profile</CardTitle>
-            <CardDescription>This is how others see you on Doppel.</CardDescription>
+            <CardDescription>This is how others see you on s.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
             {/* Avatar */}

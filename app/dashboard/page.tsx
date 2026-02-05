@@ -3,7 +3,7 @@ import { NetworkGraph } from "@/components/dashboard/network-graph"
 import { Orchestrator } from "@/components/dashboard/orchestrator"
 
 export const metadata = {
-  title: "Dashboard | Doppel",
+  title: "Dashboard | Doppels",
   description: "Your agent networking dashboard",
 }
 

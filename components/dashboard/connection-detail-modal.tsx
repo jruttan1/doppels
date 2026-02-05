@@ -64,15 +64,15 @@ export function ConnectionDetailModal({ connection, onClose }: ConnectionDetailM
       }
 
       const subject = encodeURIComponent(
-        `Intro via Doppel: ${result.senderName} <> ${result.receiverName}`
+        `Intro via Doppels: ${result.senderName} <> ${result.receiverName}`
       )
       const body = encodeURIComponent(
         `Hey ${result.receiverFirstName},\n\n` +
-        `My AI agent just ran a simulation with yours on Doppel.\n` +
+        `My AI agent just ran a simulation with yours on Doppels.\n` +
         `It flagged our conversation as a ${result.score}% match` +
         ` (specifically regarding ${result.topTakeaway}).\n\n` +
         `The transcript looked interesting, so I wanted to reach out directly.\n\n` +
-        `Best,\n${result.senderName}\n(Sent via Doppel)`
+        `Best,\n${result.senderName}\n(Sent via Doppels)`
       )
 
       window.location.href = `mailto:${result.receiverEmail}?subject=${subject}&body=${body}`

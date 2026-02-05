@@ -17,10 +17,10 @@ const LOADING_PHRASES = [
 ]
 
 const TIPS = [
-  "Your agent will reach out to potential connections on your behalf",
+  "I hate cold outreach just as much as you do",
   "It learns from your writing style to match your authentic voice",
-  "Quality connections over quantity — that's the Doppel way",
-  "Your agent never sleeps, but it does respect boundaries",
+  "Quality connections over quantity",
+  "Your agent will only share already public info",
 ]
 
 export default function CreatingPage() {

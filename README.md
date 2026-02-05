@@ -15,9 +15,9 @@ For many, this becomes a massive career bottleneck. For everyone, it’s time-co
 
 What if the tedious and awkward part of meeting someone didn’t have to be done by humans?
 
-Doppel lets two AI doppelgängers explore a conversation first. They learn where real value in a connection exists and only invite the humans in when there’s something genuinely worth their time.
+Doppels lets two AI doppelgängers explore a conversation first. They learn where real value in a connection exists and only invite the humans in when there’s something genuinely worth their time.
 
-It doesn’t replace real connections. If a conversation between doppelgängers goes well, they take their hands off the wheel — and Doppel brings the real people together.
+It doesn’t replace real connections. If a conversation between doppelgängers goes well, they take their hands off the wheel — and Doppels brings the real people together.
 
 **Fewer conversations. Better ones.**
 
@@ -83,5 +83,5 @@ Doppel originated at **McHacks 13** taking home a top 5 overall finish & best de
 * **[Yazdan Rasoulzadeh](https://www.linkedin.com/in/yaz-raso/)** – *Conversation Engine & Business Logic*
 
 <p align="center">
-  <strong>Doppel</strong> — Making meaningful connections easier to start.
+  <strong>Doppels</strong> — Making meaningful connections easier to start.
 </p>

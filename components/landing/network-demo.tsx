@@ -203,7 +203,7 @@ export function NetworkDemo() {
           </Badge>
           <h2 className="text-3xl sm:text-4xl font-bold mb-4 text-balance">Watch Your Network Grow</h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            Your Doppel agent explores the network 24/7. Green nodes are high-compatibility matches ready for you.
+            Your Doppel explores the network 24/7. Green nodes are high-compatibility matches ready for you.
           </p>
         </div>
 

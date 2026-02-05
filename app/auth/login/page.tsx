@@ -2,7 +2,7 @@ import { LoginForm } from "@/components/auth/login-form"
 import { AuthLayout } from "@/components/auth/auth-layout"
 
 export const metadata = {
-  title: "Sign In | Doppel",
+  title: "Sign In | Doppels",
   description: "Sign in to your Doppel account",
 }
 

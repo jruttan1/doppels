@@ -3,7 +3,7 @@ import { DashboardShell } from "@/components/dashboard/shell"
 import { SettingsView } from "@/components/dashboard/settings-view"
 
 export const metadata = {
-  title: "Settings | Doppel",
+  title: "Settings | Doppels",
   description: "Manage your Doppel settings",
 }
 

@@ -15,7 +15,7 @@ export function OnboardingHeader({ currentStep, steps }: OnboardingHeaderProps) 
           <Link href="/" className="flex items-center gap-2">
             <Image src="/logo.svg" alt="Doppel" width={40} height={40} />
             <span className="text-xl font-bold font-mono text-white">
-              Doppel
+              Doppels
             </span>
           </Link>
 

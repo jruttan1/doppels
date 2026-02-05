@@ -2,7 +2,7 @@ import { SignupForm } from "@/components/auth/signup-form"
 import { AuthLayout } from "@/components/auth/auth-layout"
 
 export const metadata = {
-  title: "Create Account | Doppel",
+  title: "Create Account | Doppels",
   description: "Create your Doppel account and deploy your digital twin",
 }
 

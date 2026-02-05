@@ -24,7 +24,7 @@ export function AuthLayout({ children, title, description, ctaText }: AuthLayout
         <div className="relative flex flex-col justify-between p-12 z-[4]">
           <Link href="/" className="flex items-center gap-2">
             <Image src="/logo.svg" alt="Doppel" width={40} height={40} />
-            <span className="text-2xl font-bold font-mono text-white">Doppel</span>
+            <span className="text-2xl font-bold font-mono text-white">Doppels</span>
           </Link>
 
           <div className="max-w-md">
@@ -41,7 +41,7 @@ export function AuthLayout({ children, title, description, ctaText }: AuthLayout
         <div className="lg:hidden p-4 border-b border-border">
           <Link href="/" className="flex items-center gap-2">
             <Image src="/logo.svg" alt="Doppel" width={40} height={40} />
-            <span className="text-xl font-bold font-mono">Doppel</span>
+            <span className="text-xl font-bold font-mono">Doppels</span>
           </Link>
         </div>
 
