@@ -108,8 +108,22 @@ export async function analyzeTranscript(
             role: 'user',
             parts: [
               {
-                text: `Analyze this chat. Return JSON: { "score": number (0-100), "takeaways": ["string"] }
-TRANSCRIPT: ${JSON.stringify(transcript)}`,
+                text: `You are evaluating a simulated networking conversation between two professionals to determine their compatibility as connections.
+
+Score this conversation from 0-100 on NETWORKING COMPATIBILITY:
+- 80-100: Strong mutual fit. They share relevant skills, complementary goals, or clear reasons to stay in touch.
+- 60-79: Decent overlap. Some shared interests or potential for collaboration, worth connecting.
+- 40-59: Mild relevance. Polite conversation but no strong professional synergy.
+- 0-39: Poor fit. Little overlap in goals, skills, or interests.
+
+Be generous — most professional conversations between people in overlapping fields should score 60+. Only give below 50 if there's genuinely no professional overlap.
+
+Return JSON: { "score": number (0-100), "takeaways": ["string", "string", "string"] }
+
+Takeaways should be specific talking points or reasons they'd benefit from connecting.
+
+TRANSCRIPT:
+${JSON.stringify(transcript)}`,
               },
             ],
           },

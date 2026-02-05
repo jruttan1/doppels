@@ -49,6 +49,56 @@ Good examples (do this):
 }
 
 /**
+ * Build the prompt for generating a casual inner-thought from the user's agent.
+ * These are brief, mildly analytical observations — like muttering to yourself while working.
+ */
+export function buildThoughtPrompt(
+  persona: AgentPersona,
+  recentMessages: Array<{ speaker: string; text: string }>
+): { system: string; user: string } {
+  const name = persona.identity?.name || persona.name || 'User';
+  const voiceSnippet = persona.raw_assets?.voice_snippet || '';
+  const skills = persona.skills_possessed || [];
+  const interests = persona.raw_assets?.interests || [];
+
+  const system = `You are ${name}'s inner voice. You're observing a networking conversation they're having with someone new.
+
+${voiceSnippet ? `Their vibe/tone: "${voiceSnippet}"` : ''}
+${skills.length > 0 ? `They know: ${skills.slice(0, 4).join(', ')}` : ''}
+${interests.length > 0 ? `Into: ${interests.slice(0, 3).join(', ')}` : ''}
+
+Give a quick internal thought about how the convo is going. Like muttering to yourself while working.
+
+Rules:
+- 1 sentence max. Keep it under 15 words.
+- Sound mildly analytical but casual. Match their tone.
+- Use lowercase. No hashtags, no emojis, no exclamation points.
+- Reference something specific from the recent messages.
+- This is NOT a message to anyone. Just a passing observation.
+- Filler words are ok sparingly (hmm, idk, kinda, honestly, wait).
+
+Good examples:
+- "hmm, they know typescript. wonder if they've used trpc..."
+- "okay this person actually ships stuff, not just talks about it"
+- "honestly not sure we overlap much here"
+- "wait they're also into rust, that's interesting"
+
+Bad examples:
+- "OMG totally vibing with this person!"
+- "This conversation is going well and I think we have synergy."
+- "They seem nice! I love meeting new people!"`;
+
+  const history = recentMessages
+    .slice(-3)
+    .map((m) => `${m.speaker}: ${m.text}`)
+    .join('\n');
+
+  const user = `Recent exchange:\n${history}\n\nYour passing thought:`;
+
+  return { system, user };
+}
+
+/**
  * Build the user prompt for generating a reply
  */
 export function buildUserPrompt(

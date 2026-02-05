@@ -4,6 +4,7 @@ import { SimulationState } from './state';
 import {
   agentReplyNode,
   syncToDbNode,
+  generateThoughtNode,
   checkTerminationNode,
   analyzeConversationNode,
   persistFinalNode,
@@ -14,16 +15,17 @@ import { shouldContinueConversation } from './edges/router';
  * Create the simulation StateGraph.
  *
  * Graph topology:
- * START → agentReply → syncToDb → checkTermination → [routing]
- *                                                    ↓
- *                                          continue → (loop back to agentReply)
- *                                          analyze → analyzeConversation → persistFinal → END
+ * START → agentReply → syncToDb → generateThought → checkTermination → [routing]
+ *                                                                       ↓
+ *                                                             continue → (loop back to agentReply)
+ *                                                             analyze → analyzeConversation → persistFinal → END
  */
 export function createSimulationGraph() {
   const graph = new StateGraph(SimulationState)
     // Add all nodes
     .addNode('agentReply', agentReplyNode)
     .addNode('syncToDb', syncToDbNode)
+    .addNode('generateThought', generateThoughtNode)
     .addNode('checkTermination', checkTerminationNode)
     .addNode('analyzeConversation', analyzeConversationNode)
     .addNode('persistFinal', persistFinalNode)
@@ -34,8 +36,11 @@ export function createSimulationGraph() {
     // agentReply → syncToDb
     .addEdge('agentReply', 'syncToDb')
 
-    // syncToDb → checkTermination
-    .addEdge('syncToDb', 'checkTermination')
+    // syncToDb → generateThought
+    .addEdge('syncToDb', 'generateThought')
+
+    // generateThought → checkTermination
+    .addEdge('generateThought', 'checkTermination')
 
     // Conditional routing from checkTermination
     .addConditionalEdges('checkTermination', shouldContinueConversation, {

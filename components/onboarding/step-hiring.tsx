@@ -113,7 +113,7 @@ export function StepHiring({ soulData, updateSoulData, onNext, onPrev }: StepHir
           Who are you looking for?
         </h1>
         <p className="text-white/50">
-          Seems like you're scouting for someone. Help us find the right people for you.
+          If you're here scouting for someone. Help us set the right hard filters for you.
         </p>
       </div>
 

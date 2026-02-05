@@ -6,10 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Progress } from "@/components/ui/progress"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Calendar, MessageCircle, Linkedin, ExternalLink, Sparkles, Target, Users, MessageSquare, ArrowRight, X } from "lucide-react"
+import { Mail, Linkedin, ExternalLink, Sparkles, Target, Users, X } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
-import { toast } from "sonner"
 
 interface ConnectionPreview {
   id: string
@@ -29,114 +27,74 @@ interface ConnectionDetailModalProps {
   onViewSimulation?: (simulationId: string) => void
 }
 
-export function ConnectionDetailModal({ connection, onClose, onViewSimulation }: ConnectionDetailModalProps) {
+export function ConnectionDetailModal({ connection, onClose }: ConnectionDetailModalProps) {
   const [simulationId, setSimulationId] = useState<string | null>(null)
-  const [showChat, setShowChat] = useState(false)
-  const [messages, setMessages] = useState<Array<{ speaker: string; text: string; id: string }>>([])
   const [talkingPoints, setTalkingPoints] = useState<string[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [currentUserName, setCurrentUserName] = useState<string>("You")
   const [sendingCoffeeChat, setSendingCoffeeChat] = useState(false)
   const [coffeeChatSent, setCoffeeChatSent] = useState<string | null>(null)
   const [linkedinUrl, setLinkedinUrl] = useState<string | null>(null)
   const supabase = createClient()
 
-  const handleBookCoffeeChat = async () => {
+  const handleReachOut = async () => {
     const simId = connection?.simulationId || simulationId
-    console.log("Coffee chat - connection.simulationId:", connection?.simulationId, "simulationId state:", simulationId, "using:", simId)
-    
+
     if (!simId) {
-      console.error("No simulation ID available")
       setCoffeeChatSent("No simulation found for this connection")
       return
     }
 
     setSendingCoffeeChat(true)
     setCoffeeChatSent(null)
-    
-    // Show toast after 1.5 seconds
-    setTimeout(() => {
-      toast.success("Email sent!", {
-        description: "Coffee chat invitation has been sent.",
-        duration: 3000,
-      })
-    }, 1500)
-    
+
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        console.error("No user found")
-        return
-      }
+      if (!user) return
 
-      console.log("Sending coffee chat request with simId:", simId, "senderId:", user.id)
-      
       const response = await fetch('/api/send-coffee-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          simulationId: simId,
-          senderId: user.id
-        })
+        body: JSON.stringify({ simulationId: simId, senderId: user.id })
       })
 
       const result = await response.json()
-      
-      if (response.ok) {
-        setCoffeeChatSent(result.message || "Invitation sent!")
-      } else {
-        console.error("Failed to send:", result.error)
-        setCoffeeChatSent("Failed to send invitation")
+
+      if (!response.ok) {
+        setCoffeeChatSent(result.error || "Failed to get contact info")
+        return
       }
+
+      const subject = encodeURIComponent(
+        `Intro via Doppel: ${result.senderName} <> ${result.receiverName}`
+      )
+      const body = encodeURIComponent(
+        `Hey ${result.receiverFirstName},\n\n` +
+        `My AI agent just ran a simulation with yours on Doppel.\n` +
+        `It flagged our conversation as a ${result.score}% match` +
+        ` (specifically regarding ${result.topTakeaway}).\n\n` +
+        `The transcript looked interesting, so I wanted to reach out directly.\n\n` +
+        `Best,\n${result.senderName}\n(Sent via Doppel)`
+      )
+
+      window.location.href = `mailto:${result.receiverEmail}?subject=${subject}&body=${body}`
     } catch (error) {
-      console.error("Error sending coffee chat:", error)
-      setCoffeeChatSent("Failed to send invitation")
+      setCoffeeChatSent("Failed to prepare email")
     } finally {
       setSendingCoffeeChat(false)
     }
   }
 
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-
-        const { data: currentUser } = await supabase
-          .from('users')
-          .select('name')
-          .eq('id', user.id)
-          .single()
-        
-        if (currentUser?.name) {
-          setCurrentUserName(currentUser.name)
-        }
-      } catch (error) {
-        console.error("Error fetching user data:", error)
-      }
-    }
-
-    fetchUserData()
-  }, [supabase])
-
   // Reset state when connection changes
   useEffect(() => {
     if (connection) {
-      // Reset all state when a new connection is opened
       setSimulationId(null)
-      setMessages([])
       setTalkingPoints([])
-      setShowChat(false)
       setCoffeeChatSent(null)
       setLinkedinUrl(null)
-      
-      // Find the simulation and connection's LinkedIn URL
+
       const findSimulation = async () => {
         try {
           const { data: { user } } = await supabase.auth.getUser()
           if (!user) return
-
-          console.log("Finding simulation for user:", user.id, "connection:", connection.id)
 
           // Fetch the connection's LinkedIn URL
           const { data: connectionUser } = await supabase
@@ -150,20 +108,20 @@ export function ConnectionDetailModal({ connection, onClose, onViewSimulation }:
           }
 
           // Try to find simulation where current user is participant1
-          let { data: sim, error } = await supabase
+          let { data: sim } = await supabase
             .from('simulations')
-            .select('id, transcript, takeaways')
+            .select('id, takeaways')
             .eq('participant1', user.id)
             .eq('participant2', connection.id)
             .order('score', { ascending: false })
             .limit(1)
             .maybeSingle()
 
-          // If not found, try reverse order (current user might be participant2)
+          // If not found, try reverse order
           if (!sim) {
             const { data: simReverse } = await supabase
               .from('simulations')
-              .select('id, transcript, takeaways')
+              .select('id, takeaways')
               .eq('participant1', connection.id)
               .eq('participant2', user.id)
               .order('score', { ascending: false })
@@ -172,20 +130,13 @@ export function ConnectionDetailModal({ connection, onClose, onViewSimulation }:
             sim = simReverse
           }
 
-          console.log("Found simulation:", sim?.id)
-
           if (sim) {
             setSimulationId(sim.id)
-            if (sim.transcript && Array.isArray(sim.transcript)) {
-              setMessages(sim.transcript as any[])
-            }
             if (sim.takeaways && Array.isArray(sim.takeaways)) {
               setTalkingPoints(sim.takeaways)
             } else {
               setTalkingPoints([])
             }
-          } else {
-            console.log("No simulation found between these users")
           }
         } catch (error) {
           console.error("Error finding simulation:", error)
@@ -193,83 +144,7 @@ export function ConnectionDetailModal({ connection, onClose, onViewSimulation }:
       }
       findSimulation()
     }
-  }, [connection?.id, supabase]) // Use connection.id to detect changes
-
-  const handleViewSimulation = async () => {
-    console.log("handleViewSimulation called", { 
-      connection: connection?.id, 
-      simulationId, 
-      connectionSimulationId: connection?.simulationId,
-      hasOnViewSimulation: !!onViewSimulation 
-    })
-    
-    if (!connection) {
-      console.warn("No connection available")
-      return
-    }
-    
-    if (!onViewSimulation) {
-      console.warn("onViewSimulation callback not provided")
-      return
-    }
-    
-    setIsLoading(true)
-    
-    try {
-      // Use simulationId from connection if available, otherwise use the one we fetched
-      let simId = connection.simulationId || simulationId
-      console.log("Initial simId:", simId)
-      
-      // If we don't have a simulation ID, fetch it from the database
-      if (!simId && connection.id) {
-        console.log("Fetching simulation ID from database...")
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) {
-          console.warn("No user found")
-          setIsLoading(false)
-          return
-        }
-
-        const { data: sim, error } = await supabase
-          .from('simulations')
-          .select('id')
-          .eq('participant1', user.id)
-          .eq('participant2', connection.id)
-          .order('score', { ascending: false })
-          .limit(1)
-          .maybeSingle()
-
-        if (error) {
-          console.error("Error fetching simulation:", error)
-          setIsLoading(false)
-          return
-        }
-
-        if (sim) {
-          simId = sim.id
-          console.log("Found simulation ID:", simId)
-        } else {
-          console.warn("No simulation found for connection:", connection.id)
-          setIsLoading(false)
-          return
-        }
-      }
-      
-      // Directly route to the simulation
-      if (simId) {
-        console.log("Calling onViewSimulation with simId:", simId)
-        // onViewSimulation will set selectedConnection to null, which closes this modal
-        // Do NOT call onClose() here - it would clear the simulation we're about to show
-        await onViewSimulation(simId)
-      } else {
-        console.warn("No simulation ID found")
-      }
-    } catch (error) {
-      console.error("Error in handleViewSimulation:", error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  }, [connection?.id, supabase])
 
   if (!connection) return null
 
@@ -280,10 +155,9 @@ export function ConnectionDetailModal({ connection, onClose, onViewSimulation }:
   }
 
   return (
-    <Dialog 
-      open={!!connection} 
+    <Dialog
+      open={!!connection}
       onOpenChange={(open) => {
-        console.log("Connection dialog onOpenChange:", open, connection?.id)
         if (!open) {
           onClose()
         }
@@ -355,15 +229,6 @@ export function ConnectionDetailModal({ connection, onClose, onViewSimulation }:
             </div>
           </div>
 
-          {/* Icebreaker */}
-          <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 min-w-0">
-            <h4 className="text-sm font-medium flex items-center gap-2 mb-2">
-              <MessageSquare className="w-4 h-4 text-primary shrink-0" />
-              Your Icebreaker
-            </h4>
-            <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">{connection.icebreaker}</p>
-          </div>
-
           {/* Talking Points */}
           {talkingPoints.length > 0 && (
             <div className="space-y-3">
@@ -389,27 +254,13 @@ export function ConnectionDetailModal({ connection, onClose, onViewSimulation }:
             </div>
           )}
           <div className="flex flex-col sm:flex-row gap-3 pt-2 min-w-0 w-full">
-            <Button 
+            <Button
               className="flex-1 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground min-w-0 shrink-0"
-              onClick={handleBookCoffeeChat}
-              disabled={sendingCoffeeChat || coffeeChatSent?.includes("sent")}
+              onClick={handleReachOut}
+              disabled={sendingCoffeeChat}
             >
-              <Calendar className="w-4 h-4 shrink-0" />
-              <span className="truncate">{sendingCoffeeChat ? "Sending..." : coffeeChatSent?.includes("sent") ? "Invitation Sent!" : "Book Coffee Chat"}</span>
-            </Button>
-            <Button 
-              type="button"
-              variant="outline" 
-              className="flex-1 gap-2 bg-transparent min-w-0 shrink-0"
-              onClick={async (e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                await handleViewSimulation()
-              }}
-              disabled={isLoading}
-            >
-              <MessageCircle className="w-4 h-4 shrink-0" />
-              <span className="truncate">{isLoading ? "Loading..." : "View Simulation"}</span>
+              <Mail className="w-4 h-4 shrink-0" />
+              <span className="truncate">{sendingCoffeeChat ? "Preparing..." : "Reach Out"}</span>
             </Button>
           </div>
 
@@ -433,94 +284,6 @@ export function ConnectionDetailModal({ connection, onClose, onViewSimulation }:
               </Button>
             )}
           </div>
-
-          {/* Chat View */}
-          {showChat && messages.length > 0 && (
-            <div className="mt-6 pt-6 border-t border-border">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2">
-                    <Avatar className="w-8 h-8">
-                      <AvatarFallback className="bg-primary/20 text-primary text-xs font-semibold">
-                        {currentUserName
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")
-                          .toUpperCase()
-                          .slice(0, 2)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="text-xs font-medium">Your Agent</span>
-                  </div>
-                  <ArrowRight className="w-3 h-3 text-muted-foreground" />
-                  <div className="flex items-center gap-2">
-                    <Avatar className="w-8 h-8">
-                      <AvatarImage src={connection.avatar || "/placeholder.svg"} />
-                      <AvatarFallback className="text-xs">
-                        {connection.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="text-xs font-medium">{connection.name}</span>
-                  </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowChat(false)}
-                  className="text-xs"
-                >
-                  Hide Chat
-                </Button>
-              </div>
-
-              <ScrollArea className="h-[350px] pr-2">
-                <div className="space-y-3">
-                  {messages.map((msg, i) => {
-                    const isMyAgent = i % 2 === 0
-                    return (
-                      <div key={i} className={`flex gap-2.5 ${isMyAgent ? "" : "flex-row-reverse"}`}>
-                        <div className="shrink-0">
-                          {isMyAgent ? (
-                            <Avatar className="w-7 h-7">
-                              <AvatarFallback className="bg-primary/20 text-primary text-[10px] font-semibold">
-                                {currentUserName
-                                  .split(" ")
-                                  .map((n) => n[0])
-                                  .join("")
-                                  .toUpperCase()
-                                  .slice(0, 2)}
-                              </AvatarFallback>
-                            </Avatar>
-                          ) : (
-                            <Avatar className="w-7 h-7">
-                              <AvatarFallback className="text-[10px]">
-                                {connection.name
-                                  .split(" ")
-                                  .map((n) => n[0])
-                                  .join("")}
-                              </AvatarFallback>
-                            </Avatar>
-                          )}
-                        </div>
-                        <div
-                          className={`max-w-[75%] p-3 rounded-xl ${
-                            isMyAgent
-                              ? "bg-primary/10 border border-primary/20 rounded-tl-none"
-                              : "bg-secondary rounded-tr-none"
-                          }`}
-                        >
-                          <p className="text-xs leading-relaxed whitespace-pre-wrap break-words">{msg.text || ""}</p>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </ScrollArea>
-            </div>
-          )}
         </div>
         </div>
       </DialogContent>

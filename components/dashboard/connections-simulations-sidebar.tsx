@@ -1,17 +1,15 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { ChevronRight, Sparkles, MessageSquare, CheckCircle2, XCircle, Clock, ArrowRight, Calendar, Loader2 } from "lucide-react"
+import { Sparkles, CheckCircle2, XCircle, Clock, ArrowRight, Mail, Loader2, Users } from "lucide-react"
 import { ConnectionDetailModal } from "./connection-detail-modal"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
-import { toast } from "sonner"
 
 interface ConnectionPreview {
   id: string
@@ -32,10 +30,9 @@ interface Simulation {
   targetAvatar?: string
   status: "completed" | "in_progress" | "failed"
   score?: number
-  turns: number
   startedAt: string
   completedAt?: string
-  messages: { agent: "A" | "B"; message: string }[]
+  takeaways: string[]
   summary?: string
 }
 
@@ -51,45 +48,42 @@ export function ConnectionsSimulationsSidebar() {
   const [coffeeChatSent, setCoffeeChatSent] = useState<string | null>(null)
   const supabase = createClient()
 
-  const handleBookCoffeeChat = async (simulationId: string) => {
+  const handleReachOut = async (simulationId: string) => {
     setSendingCoffeeChat(true)
     setCoffeeChatSent(null)
-    
-    // Show toast after 1.5 seconds
-    setTimeout(() => {
-      toast.success("Email sent!", {
-        description: "Coffee chat invitation has been sent.",
-        duration: 3000,
-      })
-    }, 1500)
-    
+
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        console.error("No user found")
-        return
-      }
+      if (!user) return
 
       const response = await fetch('/api/send-coffee-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          simulationId,
-          senderId: user.id
-        })
+        body: JSON.stringify({ simulationId, senderId: user.id })
       })
 
       const result = await response.json()
-      
-      if (response.ok) {
-        setCoffeeChatSent(result.message || "Invitation sent!")
-      } else {
-        console.error("Failed to send:", result.error)
-        setCoffeeChatSent("Failed to send invitation")
+
+      if (!response.ok) {
+        setCoffeeChatSent(result.error || "Failed to get contact info")
+        return
       }
+
+      const subject = encodeURIComponent(
+        `Intro via Doppel: ${result.senderName} <> ${result.receiverName}`
+      )
+      const body = encodeURIComponent(
+        `Hey ${result.receiverFirstName},\n\n` +
+        `My AI agent just ran a simulation with yours on Doppel.\n` +
+        `It flagged our conversation as a ${result.score}% match` +
+        ` (specifically regarding ${result.topTakeaway}).\n\n` +
+        `The transcript looked interesting, so I wanted to reach out directly.\n\n` +
+        `Best,\n${result.senderName}\n(Sent via Doppel)`
+      )
+
+      window.location.href = `mailto:${result.receiverEmail}?subject=${subject}&body=${body}`
     } catch (error) {
-      console.error("Error sending coffee chat:", error)
-      setCoffeeChatSent("Failed to send invitation")
+      setCoffeeChatSent("Failed to prepare email")
     } finally {
       setSendingCoffeeChat(false)
     }
@@ -107,7 +101,7 @@ export function ConnectionsSimulationsSidebar() {
           .select('name')
           .eq('id', user.id)
           .single()
-        
+
         if (currentUser?.name) {
           setCurrentUserName(currentUser.name)
         }
@@ -115,14 +109,14 @@ export function ConnectionsSimulationsSidebar() {
         // Fetch all simulations (both directions - user as participant1 OR participant2)
         const { data: sims1, error: error1 } = await supabase
           .from('simulations')
-          .select('id, participant1, participant2, score, transcript')
+          .select('id, participant1, participant2, score, status, takeaways')
           .eq('participant1', user.id)
           .order('score', { ascending: false, nullsFirst: false })
           .limit(50)
 
         const { data: sims2, error: error2 } = await supabase
           .from('simulations')
-          .select('id, participant1, participant2, score, transcript')
+          .select('id, participant1, participant2, score, status, takeaways')
           .eq('participant2', user.id)
           .order('score', { ascending: false, nullsFirst: false })
           .limit(50)
@@ -130,7 +124,6 @@ export function ConnectionsSimulationsSidebar() {
         const simError = error1 || error2
         if (simError) {
           console.error("Error fetching simulations:", simError)
-          console.error("Error details:", JSON.stringify(simError, null, 2))
           setConnections([])
           setSimulations([])
           setSimulationsLoaded(true)
@@ -168,15 +161,14 @@ export function ConnectionsSimulationsSidebar() {
           .in('id', userIds)
 
         if (usersError || !users) {
-          // Error fetching user details - silently fail
           return
         }
 
         const userMap = new Map(users.map(u => [u.id, u]))
 
-        // Build connections (score >= 70)
+        // Build connections (completed with score >= 70)
         const connectionsList: ConnectionPreview[] = simsData
-          .filter(s => s.score && s.score >= 70)
+          .filter(s => (s as any).status === 'completed' && s.score && s.score >= 70)
           .map((sim) => {
             const user = userMap.get(sim.partnerId)
             const persona = user?.persona as any
@@ -186,14 +178,11 @@ export function ConnectionsSimulationsSidebar() {
             const company = identity?.company || tagline.split("@")[1]?.split("|")[0]?.trim() || ""
             const roleText = company ? `${role} @ ${company}` : role
 
-            const transcript = sim.transcript as any[]
-            let icebreaker = "High compatibility match"
-            if (transcript && Array.isArray(transcript) && transcript.length > 0) {
-              const firstMsg = transcript[0]?.text || transcript[0]?.content || ""
-              icebreaker = firstMsg.substring(0, 100) + (firstMsg.length > 100 ? "..." : "")
-            }
+            const takeaways = (sim.takeaways as string[] | null) || []
+            const icebreaker = takeaways.length > 0
+              ? takeaways[0].substring(0, 120) + (takeaways[0].length > 120 ? "..." : "")
+              : `${sim.score}% compatibility match`
 
-            // No created_at column, so just show "Just now"
             const matchedAt = "Just now"
 
             return {
@@ -219,13 +208,6 @@ export function ConnectionsSimulationsSidebar() {
           const company = identity?.company || tagline.split("@")[1]?.split("|")[0]?.trim() || ""
           const roleText = company ? `${role} @ ${company}` : role
 
-          const transcript = sim.transcript as any[]
-          const messages = (transcript || []).map((msg: any, idx: number) => ({
-            agent: (idx % 2 === 0 ? "A" : "B") as "A" | "B",
-            message: msg.text || msg.content || "",
-          }))
-
-          // No created_at column, so just show "Just now"
           const startedAt = "Just now"
 
           return {
@@ -233,12 +215,15 @@ export function ConnectionsSimulationsSidebar() {
             targetName: user?.name || "Unknown",
             targetRole: roleText,
             targetAvatar: undefined,
-            status: sim.score !== null && sim.score !== undefined ? "completed" : "in_progress",
-            score: sim.score || undefined,
-            turns: messages.length,
+            status: (sim as any).status === 'completed' ? "completed"
+              : (sim as any).status === 'failed' ? "failed"
+              : (sim as any).status === 'running' ? "in_progress"
+              : sim.score !== null && sim.score !== undefined ? "completed"
+              : "in_progress",
+            score: sim.score ?? undefined,
             startedAt,
             completedAt: sim.score !== null ? startedAt : undefined,
-            messages,
+            takeaways: (sim.takeaways as string[] | null) || [],
             summary: sim.score && sim.score >= 70 ? "High compatibility match" : undefined,
           }
         })
@@ -247,19 +232,25 @@ export function ConnectionsSimulationsSidebar() {
         setSimulations(simulationsList)
         setSimulationsLoaded(true)
       } catch (error) {
-        // Error in fetchData - silently fail
         setSimulationsLoaded(true)
       }
     }
 
     fetchData()
-    
+
     // Poll for new simulations every 10 seconds
     const interval = setInterval(() => {
       fetchData()
     }, 10000)
-    
-    return () => clearInterval(interval)
+
+    // Refresh when a simulation completes (small delay to ensure DB write propagates)
+    const handleSimCompleted = () => setTimeout(() => fetchData(), 1000)
+    window.addEventListener("simulation-completed", handleSimCompleted)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener("simulation-completed", handleSimCompleted)
+    }
   }, [supabase])
 
   const matchedConnections = connections.filter((c) => c.status === "matched")
@@ -279,15 +270,18 @@ export function ConnectionsSimulationsSidebar() {
   const getStatusBadge = (status: Simulation["status"], score?: number) => {
     switch (status) {
       case "completed":
-        return (
-          <Badge className={score && score >= 70 ? "bg-teal-500/10 text-teal-500 text-xs" : "bg-muted text-muted-foreground text-xs"}>
-            {score}%
-          </Badge>
-        )
+        if (score !== undefined && score !== null) {
+          return (
+            <Badge className={score >= 70 ? "bg-teal-500/10 text-teal-500 text-xs" : "bg-muted text-muted-foreground text-xs"}>
+              {score}%
+            </Badge>
+          )
+        }
+        return <Badge variant="secondary" className="text-xs">Done</Badge>
       case "in_progress":
-        return <Badge className="bg-yellow-500/10 text-yellow-500 text-xs animate-pulse">...</Badge>
+        return <Badge className="bg-yellow-500/10 text-yellow-500 text-xs animate-pulse">Running</Badge>
       case "failed":
-        return <Badge variant="secondary" className="text-xs">No</Badge>
+        return <Badge variant="secondary" className="text-destructive/70 text-xs">Failed</Badge>
     }
   }
 
@@ -327,7 +321,6 @@ export function ConnectionsSimulationsSidebar() {
                     onClick={(e) => {
                       e.preventDefault()
                       e.stopPropagation()
-                      console.log("Connection clicked:", connection.id, connection.name)
                       setSelectedConnection(connection)
                     }}
                   >
@@ -403,7 +396,6 @@ export function ConnectionsSimulationsSidebar() {
                     onClick={(e) => {
                       e.preventDefault()
                       e.stopPropagation()
-                      console.log("Simulation clicked:", simulation.id, simulation.targetName)
                       setSelectedSimulation(simulation)
                     }}
                   >
@@ -428,13 +420,7 @@ export function ConnectionsSimulationsSidebar() {
                           {getStatusBadge(simulation.status, simulation.score)}
                         </div>
                         <p className="text-[10px] text-muted-foreground line-clamp-2 break-words">{simulation.targetRole}</p>
-                        <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted-foreground flex-wrap">
-                          <span className="flex items-center gap-0.5">
-                            <MessageSquare className="w-2.5 h-2.5 shrink-0" />
-                            {simulation.turns}
-                          </span>
-                          <span>{simulation.startedAt}</span>
-                        </div>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">{simulation.startedAt}</p>
                       </div>
                     </div>
                   </button>
@@ -445,107 +431,31 @@ export function ConnectionsSimulationsSidebar() {
         </Tabs>
       </div>
 
-      <ConnectionDetailModal 
-        connection={selectedConnection} 
+      <ConnectionDetailModal
+        connection={selectedConnection}
         onClose={() => {
           setSelectedConnection(null)
-          // Don't clear selectedSimulation here - we might be switching to view a simulation
-        }}
-        onViewSimulation={async (simId) => {
-          // Clear any existing simulation first
-          setSelectedSimulation(null)
-          console.log("onViewSimulation called with:", simId)
-          console.log("Available simulations:", simulations.map(s => s.id))
-          
-          // First try to find in existing simulations array
-          let sim = simulations.find(s => s.id === simId)
-          console.log("Found simulation in array:", !!sim)
-          
-          // If not found, fetch it directly from the database
-          if (!sim && selectedConnection) {
-            console.log("Fetching simulation from database...")
-            try {
-              const { data: { user } } = await supabase.auth.getUser()
-              if (!user) return
-
-              const { data: simData } = await supabase
-                .from('simulations')
-                .select('id, participant2, score, transcript')
-                .eq('id', simId)
-                .eq('participant1', user.id)
-                .single()
-
-              if (simData) {
-                // Fetch user details for the simulation
-                const { data: targetUser } = await supabase
-                  .from('users')
-                  .select('id, name, tagline, persona')
-                  .eq('id', simData.participant2)
-                  .single()
-
-                if (targetUser) {
-                  const persona = targetUser.persona as any
-                  const identity = persona?.identity || {}
-                  const tagline = targetUser.tagline || ""
-                  const role = identity?.role || tagline.split("@")[0]?.trim() || "Professional"
-                  const company = identity?.company || tagline.split("@")[1]?.split("|")[0]?.trim() || ""
-                  const roleText = company ? `${role} @ ${company}` : role
-
-                  const transcript = simData.transcript as any[]
-                  const messages = (transcript || []).map((msg: any, idx: number) => ({
-                    agent: (idx % 2 === 0 ? "A" : "B") as "A" | "B",
-                    message: msg.text || msg.content || "",
-                  }))
-
-                  sim = {
-                    id: simData.id,
-                    targetName: targetUser.name || "Unknown",
-                    targetRole: roleText,
-                    targetAvatar: undefined,
-                    status: simData.score !== null && simData.score !== undefined ? "completed" : "in_progress",
-                    score: simData.score || undefined,
-                    turns: messages.length,
-                    startedAt: "Just now",
-                    completedAt: simData.score !== null ? "Just now" : undefined,
-                    messages,
-                    summary: simData.score && simData.score >= 70 ? "High compatibility match" : undefined,
-                  }
-                }
-              }
-            } catch (error) {
-              console.error("Error fetching simulation:", error)
-            }
-          }
-
-          if (sim) {
-            console.log("Setting selected simulation:", sim.id)
-            setSelectedSimulation(sim)
-            setSelectedConnection(null)
-          } else {
-            console.error("Simulation not found:", simId)
-            console.error("Available simulations:", simulations.map(s => ({ id: s.id, name: s.targetName })))
-          }
         }}
       />
 
-      {/* Simulation detail dialog - Improved Chat UI */}
-      <Dialog 
-        open={!!selectedSimulation} 
+      {/* Simulation detail dialog — profile + takeaways only */}
+      <Dialog
+        open={!!selectedSimulation}
         onOpenChange={(open) => {
-          console.log("Simulation dialog onOpenChange:", open, selectedSimulation?.id)
           if (!open) {
             setSelectedSimulation(null)
+            setCoffeeChatSent(null)
           }
         }}
-        key={selectedSimulation?.id} // Force re-render when simulation changes
+        key={selectedSimulation?.id}
       >
-        <DialogContent className="max-w-3xl bg-card border-border shadow-lg h-[95vh] w-[95vw] max-h-[95vh] sm:h-[85vh] sm:max-h-[85vh] sm:w-auto sm:max-w-3xl flex flex-col min-h-0 p-0 rounded-lg z-[100] overflow-hidden">
+        <DialogContent className="max-w-lg bg-card border-border shadow-lg h-[95vh] w-[95vw] max-h-[95vh] sm:h-auto sm:max-h-[85vh] sm:w-auto sm:max-w-lg flex flex-col min-h-0 p-0 rounded-lg z-100 overflow-hidden">
           {selectedSimulation ? (
             <>
               {/* Header */}
               <div className="px-4 sm:px-6 pt-6 pb-4 border-b border-border shrink-0 min-w-0">
                 <DialogHeader>
-                  <DialogTitle className="sr-only">Simulation Chat: {selectedSimulation.targetName}</DialogTitle>
+                  <DialogTitle className="sr-only">Simulation: {selectedSimulation.targetName}</DialogTitle>
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 min-w-0">
                     <div className="flex items-center gap-3 min-w-0 flex-wrap">
                       <div className="flex items-center gap-3 min-w-0 shrink-0">
@@ -588,143 +498,66 @@ export function ConnectionsSimulationsSidebar() {
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
                       {getStatusBadge(selectedSimulation.status, selectedSimulation.score)}
-                      <div className="text-xs text-muted-foreground">
-                        {selectedSimulation.turns} messages
-                      </div>
                     </div>
                   </div>
                 </DialogHeader>
               </div>
 
-              {/* Chat Messages */}
-              <div className="flex-1 overflow-hidden min-h-0 min-w-0">
-                <ScrollArea className="h-full w-full px-4 sm:px-6 py-4">
-                  <div className="space-y-6">
-                  {selectedSimulation.messages.map((msg, i) => {
-                    const isMyAgent = msg.agent === "A"
-                    return (
-                      <div key={i} className={`flex gap-4 ${isMyAgent ? "" : "flex-row-reverse"}`}>
-                        <div className="shrink-0">
-                          {isMyAgent ? (
-                            <Avatar className="w-10 h-10">
-                              <AvatarFallback className="bg-primary/20 text-primary text-xs font-semibold">
-                                {currentUserName
-                                  .split(" ")
-                                  .map((n) => n[0])
-                                  .join("")
-                                  .toUpperCase()
-                                  .slice(0, 2)}
-                              </AvatarFallback>
-                            </Avatar>
-                          ) : (
-                            <Avatar className="w-10 h-10">
-                              <AvatarImage
-                                src={
-                                  selectedSimulation.targetAvatar ||
-                                  "/placeholder.svg?height=40&width=40&query=professional headshot"
-                                }
-                              />
-                              <AvatarFallback className="text-xs">
-                                {selectedSimulation.targetName
-                                  .split(" ")
-                                  .map((n) => n[0])
-                                  .join("")}
-                              </AvatarFallback>
-                            </Avatar>
-                          )}
-                        </div>
-                        <div className={`flex-1 min-w-0 ${isMyAgent ? "" : "flex flex-col items-end"}`}>
-                          <div
-                            className={`inline-block max-w-[85%] sm:max-w-[75%] p-4 rounded-2xl ${
-                              isMyAgent
-                                ? "bg-primary/10 border border-primary/20 rounded-tl-none"
-                                : "bg-secondary rounded-tr-none"
-                            }`}
-                          >
-                            <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-                              {msg.message}
-                            </p>
-                          </div>
-                          {i === selectedSimulation.messages.length - 1 && (
-                            <p className="text-[10px] text-muted-foreground mt-1 px-1">
-                              {selectedSimulation.startedAt}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
-                  {selectedSimulation.status === "in_progress" && (
-                    <div className="flex gap-4 flex-row-reverse">
-                      <div className="shrink-0">
-                        <Avatar className="w-10 h-10">
-                          <AvatarFallback className="text-xs">
-                            {selectedSimulation.targetName
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")}
-                          </AvatarFallback>
-                        </Avatar>
-                      </div>
-                      <div className="bg-secondary p-4 rounded-2xl rounded-tr-none">
-                        <div className="flex gap-1.5">
-                          <span
-                            className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"
-                            style={{ animationDelay: "0ms" }}
-                          />
-                          <span
-                            className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"
-                            style={{ animationDelay: "150ms" }}
-                          />
-                          <span
-                            className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"
-                            style={{ animationDelay: "300ms" }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </ScrollArea>
+              {/* Takeaways */}
+              <div className="flex-1 overflow-y-auto min-h-0 min-w-0 px-4 sm:px-6 py-4">
+                {selectedSimulation.takeaways.length > 0 ? (
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium flex items-center gap-2">
+                      <Users className="w-4 h-4 text-primary" />
+                      Talking Points
+                    </h4>
+                    <ul className="space-y-2">
+                      {selectedSimulation.takeaways.map((point, i) => (
+                        <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                          <span className="text-primary mt-1">•</span>
+                          {point}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : selectedSimulation.status === "in_progress" ? (
+                  <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <p className="text-xs">Simulation in progress...</p>
+                  </div>
+                ) : selectedSimulation.status === "failed" ? (
+                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                    <p className="text-xs">This simulation did not complete.</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                    <p className="text-xs">No talking points available.</p>
+                  </div>
+                )}
               </div>
 
               {/* Footer */}
-              <div className="px-4 sm:px-6 py-4 border-t border-border bg-secondary/30 shrink-0">
-                {selectedSimulation.summary && (
-                  <div className="mb-4 p-3 rounded-lg bg-background/50 border border-border">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Sparkles className="w-3.5 h-3.5 text-primary" />
-                      <h4 className="text-xs font-medium">AI Summary</h4>
-                    </div>
-                    <p className="text-xs text-muted-foreground">{selectedSimulation.summary}</p>
-                  </div>
-                )}
-
-                {selectedSimulation.status === "completed" &&
-                  selectedSimulation.score &&
-                  selectedSimulation.score >= 70 && (
+              {selectedSimulation.status === "completed" &&
+                selectedSimulation.score &&
+                selectedSimulation.score >= 70 && (
+                  <div className="px-4 sm:px-6 py-4 border-t border-border bg-secondary/30 shrink-0">
                     <div className="space-y-3">
                       {coffeeChatSent && (
                         <div className={`p-3 rounded-lg text-sm ${coffeeChatSent.includes("Failed") ? "bg-red-500/10 text-red-500" : "bg-green-500/10 text-green-500"}`}>
                           {coffeeChatSent}
                         </div>
                       )}
-                      <div className="flex gap-3">
-                        <Button 
-                          className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground"
-                          onClick={() => handleBookCoffeeChat(selectedSimulation.id)}
-                          disabled={sendingCoffeeChat || coffeeChatSent?.includes("sent")}
-                        >
-                          <Calendar className="w-4 h-4 mr-2" />
-                          {sendingCoffeeChat ? "Sending..." : coffeeChatSent?.includes("sent") ? "Invitation Sent!" : "Book Coffee Chat"}
-                        </Button>
-                        <Button variant="outline" className="flex-1 bg-transparent">
-                          Save for Later
-                        </Button>
-                      </div>
+                      <Button
+                        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
+                        onClick={() => handleReachOut(selectedSimulation.id)}
+                        disabled={sendingCoffeeChat}
+                      >
+                        <Mail className="w-4 h-4" />
+                        {sendingCoffeeChat ? "Preparing..." : "Reach Out"}
+                      </Button>
                     </div>
-                  )}
-              </div>
+                  </div>
+                )}
             </>
           ) : (
             <div className="p-6 text-center text-muted-foreground">

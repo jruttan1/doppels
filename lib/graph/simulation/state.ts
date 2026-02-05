@@ -1,5 +1,5 @@
 import { Annotation } from '@langchain/langgraph';
-import type { AgentConfig, TranscriptEntry, AnalysisResult } from './types';
+import type { AgentConfig, TranscriptEntry, ThoughtEntry, AnalysisResult } from './types';
 
 /**
  * State schema for the simulation graph using LangGraph Annotation.
@@ -57,6 +57,12 @@ export const SimulationState = Annotation.Root({
   error: Annotation<string | null>({
     reducer: (_, update) => update,
     default: () => null,
+  }),
+
+  // Agent thoughts (append reducer, same as transcript)
+  thoughts: Annotation<ThoughtEntry[]>({
+    reducer: (current, update) => [...(current || []), ...(update || [])],
+    default: () => [],
   }),
 
   // Configuration

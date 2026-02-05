@@ -8,11 +8,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ZoomIn, ZoomOut, Search, Sparkles, Calendar, MessageSquare } from "lucide-react"
+import { ZoomIn, ZoomOut, Search, Sparkles, Mail } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress"
 import { createClient } from "@/lib/supabase/client"
-import { toast } from "sonner"
 
 interface NetworkNode {
   id: string
@@ -49,45 +48,42 @@ export function NetworkGraph() {
   const [coffeeChatSent, setCoffeeChatSent] = useState<string | null>(null)
   const supabase = createClient()
 
-  const handleBookCoffeeChat = async (simulationId: string) => {
+  const handleReachOut = async (simulationId: string) => {
     setSendingCoffeeChat(true)
     setCoffeeChatSent(null)
-    
-    // Show toast after 1.5 seconds
-    setTimeout(() => {
-      toast.success("Email sent!", {
-        description: "Coffee chat invitation has been sent.",
-        duration: 3000,
-      })
-    }, 1500)
-    
+
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        console.error("No user found")
-        return
-      }
+      if (!user) return
 
       const response = await fetch('/api/send-coffee-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          simulationId,
-          senderId: user.id
-        })
+        body: JSON.stringify({ simulationId, senderId: user.id })
       })
 
       const result = await response.json()
-      
-      if (response.ok) {
-        setCoffeeChatSent(result.message || "Invitation sent!")
-      } else {
-        console.error("Failed to send:", result.error)
-        setCoffeeChatSent("Failed to send invitation")
+
+      if (!response.ok) {
+        setCoffeeChatSent(result.error || "Failed to get contact info")
+        return
       }
+
+      const subject = encodeURIComponent(
+        `Intro via Doppel: ${result.senderName} <> ${result.receiverName}`
+      )
+      const body = encodeURIComponent(
+        `Hey ${result.receiverFirstName},\n\n` +
+        `My AI agent just ran a simulation with yours on Doppel.\n` +
+        `It flagged our conversation as a ${result.score}% match` +
+        ` (specifically regarding ${result.topTakeaway}).\n\n` +
+        `The transcript looked interesting, so I wanted to reach out directly.\n\n` +
+        `Best,\n${result.senderName}\n(Sent via Doppel)`
+      )
+
+      window.location.href = `mailto:${result.receiverEmail}?subject=${subject}&body=${body}`
     } catch (error) {
-      console.error("Error sending coffee chat:", error)
-      setCoffeeChatSent("Failed to send invitation")
+      setCoffeeChatSent("Failed to prepare email")
     } finally {
       setSendingCoffeeChat(false)
     }
@@ -1006,20 +1002,14 @@ export function NetworkGraph() {
                           {coffeeChatSent}
                         </div>
                       )}
-                      <div className="flex flex-col sm:flex-row gap-3 w-full min-w-0">
-                        <Button 
-                          className="flex-1 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground min-w-0 shrink-0"
-                          onClick={() => selectedNode.simulationId && handleBookCoffeeChat(selectedNode.simulationId)}
-                          disabled={sendingCoffeeChat || coffeeChatSent?.includes("sent") || !selectedNode.simulationId}
-                        >
-                          <Calendar className="w-4 h-4 shrink-0" />
-                          <span className="truncate">{sendingCoffeeChat ? "Sending..." : coffeeChatSent?.includes("sent") ? "Invitation Sent!" : "Book Coffee Chat"}</span>
-                        </Button>
-                        <Button variant="outline" className="flex-1 gap-2 bg-transparent min-w-0 shrink-0">
-                          <MessageSquare className="w-4 h-4 shrink-0" />
-                          <span className="truncate">View Simulation</span>
-                        </Button>
-                      </div>
+                      <Button
+                        className="w-full gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
+                        onClick={() => selectedNode.simulationId && handleReachOut(selectedNode.simulationId)}
+                        disabled={sendingCoffeeChat || !selectedNode.simulationId}
+                      >
+                        <Mail className="w-4 h-4 shrink-0" />
+                        <span className="truncate">{sendingCoffeeChat ? "Preparing..." : "Reach Out"}</span>
+                      </Button>
                     </div>
                   )}
                 </div>

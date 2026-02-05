@@ -49,6 +49,15 @@ export interface AnalysisResult {
 }
 
 /**
+ * A single thought entry from the user's agent
+ */
+export interface ThoughtEntry {
+  text: string;
+  turnNumber: number;
+  timestamp: string;
+}
+
+/**
  * Result of a single simulation run
  */
 export interface SimulationResult {

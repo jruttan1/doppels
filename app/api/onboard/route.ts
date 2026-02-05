@@ -231,6 +231,9 @@ export async function POST(req: Request) {
     // If we parsed files, add that data to the payload
     if (unifiedProfile) {
       updatePayload.resume_normalized = unifiedProfile;
+      if (linkedinBase64) {
+        updatePayload.linkedin_normalized = unifiedProfile;
+      }
       updatePayload.linkedin_url = unifiedProfile.identity?.linkedin_url || null;
       updatePayload.skills = unifiedProfile.skills?.verified_hard_skills || [];
       updatePayload.voice_signature = unifiedProfile.analysis?.voice_tone || "Neutral";
