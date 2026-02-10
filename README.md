@@ -61,8 +61,7 @@ We believe in privacy first. You control what information your AI knows, and we 
 
 We also believe human connection matters. Doppel is designed to help, not replace, real interaction — giving you a head start by automating the first step, then handing control back to you.
 
-Currently, users **can view the full AI-to-AI conversation** once a simulation is complete. This is intended for transparency and trust during early development.
-
+Users cannot view the full AI-to-AI conversation once a simulation is complete. We want users to focus on takeaways as opposed to raw AI conversations.
 ---
 
 ## Future Improvements
