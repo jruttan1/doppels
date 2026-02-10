@@ -40,7 +40,7 @@ Nothing is sent automatically. No one is matched without mutual consent.
 | Layer | Technology |
 |------|------------|
 | Frontend | Next.js, TypeScript, Tailwind CSS |
-| Backend | TypeScript routes, Gumloop (AI workflow orchestration), Google Gemini API |
+| Backend | TypeScript routes, Google Gemini API, Supabase Realtime |
 | Database | Supabase (PostgreSQL + Auth) |
 | UI Components | shadcn/ui |
 
@@ -48,7 +48,7 @@ Nothing is sent automatically. No one is matched without mutual consent.
 
 ## Features
 
-- **Smart Onboarding** — Upload your resume, link your socials (LinkedIn, GitHub, X — whatever you’re comfortable with), describe your goals, capture your voice  
+- **Smart Onboarding** — Upload your resume, link your socials (LinkedIn, GitHub — whatever you’re comfortable with), describe your goals, capture your voice  
 - **AI Doppelgänger** — A personalized AI that represents your communication style  
 - **Mutual Matching** — Both parties must consent before any connection is made  
 - **Network Visualization** — See your connections and potential matches  
