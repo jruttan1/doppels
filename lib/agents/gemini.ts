@@ -122,7 +122,15 @@ Be honest. Most random networking conversations are 40-60. Only score 70+ if the
 
 Return JSON: { "score": number (0-100), "takeaways": ["string", "string", "string"] }
 
-Takeaways should be SPECIFIC things they discussed, not generic statements like "they both work in tech."
+TAKEAWAY FORMAT - Write them as short talking points for a follow-up email, NOT as analysis:
+- Bad: "Both professionals are deeply involved in AI development, indicating alignment of interests."
+- Good: "you're both building LLM tools for developers"
+- Bad: "They share a mutual interest in distributed systems architecture."
+- Good: "you mentioned the same frustration with Kubernetes complexity"
+- Bad: "There is potential for collaboration given their complementary skill sets."
+- Good: "they need frontend help, you've done React consulting"
+
+Keep each takeaway under 10 words. Write like a friend summarizing why you should meet someone.
 
 TRANSCRIPT:
 ${JSON.stringify(transcript)}`,

@@ -74,11 +74,10 @@ export function NetworkGraph() {
       )
       const body = encodeURIComponent(
         `Hey ${result.receiverFirstName},\n\n` +
-        `My AI agent just ran a simulation with yours on Doppels.\n` +
-        `It flagged our conversation as a ${result.score}% match` +
-        ` (specifically regarding ${result.topTakeaway}).\n\n` +
-        `The transcript looked interesting, so I wanted to reach out directly.\n\n` +
-        `Best,\n${result.senderName}\n(Sent via Doppels)`
+        `My AI agent ran a sim with yours on Doppels and flagged us as a ${result.score}% match.\n\n` +
+        `TL;DR: ${result.topTakeaway}\n\n` +
+        `Wanted to reach out directly — let me know if you're up for a quick chat.\n\n` +
+        `${result.senderName}`
       )
 
       window.location.href = `mailto:${result.receiverEmail}?subject=${subject}&body=${body}`
