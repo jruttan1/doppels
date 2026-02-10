@@ -4,6 +4,7 @@ import { SimulationState } from './state';
 import {
   agentReplyNode,
   syncToDbNode,
+  delayNode,
   generateThoughtNode,
   checkTerminationNode,
   analyzeConversationNode,
@@ -15,10 +16,12 @@ import { shouldContinueConversation } from './edges/router';
  * Create the simulation StateGraph.
  *
  * Graph topology:
- * START → agentReply → syncToDb → generateThought → checkTermination → [routing]
- *                                                                       ↓
- *                                                             continue → (loop back to agentReply)
- *                                                             analyze → analyzeConversation → persistFinal → END
+ * START → agentReply → syncToDb → generateThought → delay → checkTermination → [routing]
+ *                                                                               ↓
+ *                                                                     continue → (loop back to agentReply)
+ *                                                                     analyze → analyzeConversation → persistFinal → END
+ *
+ * Thought appears first, then delay gives user time to read it (premium feel).
  */
 export function createSimulationGraph() {
   const graph = new StateGraph(SimulationState)
@@ -26,6 +29,7 @@ export function createSimulationGraph() {
     .addNode('agentReply', agentReplyNode)
     .addNode('syncToDb', syncToDbNode)
     .addNode('generateThought', generateThoughtNode)
+    .addNode('delay', delayNode)
     .addNode('checkTermination', checkTerminationNode)
     .addNode('analyzeConversation', analyzeConversationNode)
     .addNode('persistFinal', persistFinalNode)
@@ -36,11 +40,14 @@ export function createSimulationGraph() {
     // agentReply → syncToDb
     .addEdge('agentReply', 'syncToDb')
 
-    // syncToDb → generateThought
+    // syncToDb → generateThought (thought appears immediately)
     .addEdge('syncToDb', 'generateThought')
 
-    // generateThought → checkTermination
-    .addEdge('generateThought', 'checkTermination')
+    // generateThought → delay (user reads thought during pause)
+    .addEdge('generateThought', 'delay')
+
+    // delay → checkTermination
+    .addEdge('delay', 'checkTermination')
 
     // Conditional routing from checkTermination
     .addConditionalEdges('checkTermination', shouldContinueConversation, {

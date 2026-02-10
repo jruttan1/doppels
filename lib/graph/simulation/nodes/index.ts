@@ -1,5 +1,6 @@
 export { agentReplyNode } from './agentReply';
 export { syncToDbNode } from './syncToDb';
+export { delayNode } from './delay';
 export { generateThoughtNode } from './generateThought';
 export { checkTerminationNode } from './checkTermination';
 export { analyzeConversationNode } from './analyzeConversation';

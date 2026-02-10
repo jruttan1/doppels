@@ -5,16 +5,16 @@ import { buildThoughtPrompt } from '@/lib/agents/prompts';
 import { generateWithRetry } from '@/lib/agents/gemini';
 
 /**
- * Node: Occasionally generate a casual inner-thought from the user's agent (agentA).
- * Fires roughly every 3-4 turns. On no-op turns, returns {} (no state change).
- * When a thought is generated, it writes directly to Supabase to avoid one-turn lag.
+ * Node: Generate a casual inner-thought from the user's agent (agentA).
+ * Fires every 2 turns for a premium "agent is thinking" feel.
+ * When a thought is generated, it writes directly to Supabase so the UI shows it immediately.
  */
 export async function generateThoughtNode(
   state: SimulationStateType
 ): Promise<Partial<SimulationStateType>> {
-  // Only generate thoughts every ~3 turns, starting at turn 2
+  // Generate thoughts every 2 turns, starting at turn 1
   const turn = state.currentTurn;
-  if (turn < 2 || turn % 3 !== 0) {
+  if (turn < 1 || turn % 2 !== 0) {
     return {};
   }
 
