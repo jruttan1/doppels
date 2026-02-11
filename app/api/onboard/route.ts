@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
+import { verifyAuthForUser } from '@/lib/auth/verify';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -208,6 +209,12 @@ export async function POST(req: Request) {
 
     if (!userId) {
       return NextResponse.json({ error: "Missing userId" }, { status: 400 });
+    }
+
+    // Verify the authenticated user matches the requested user
+    const auth = await verifyAuthForUser(userId);
+    if (auth.error) {
+      return NextResponse.json({ error: auth.error }, { status: 401 });
     }
 
     // 1. Parse Data (if files exist)

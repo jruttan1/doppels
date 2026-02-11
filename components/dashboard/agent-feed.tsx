@@ -175,7 +175,7 @@ export function AgentFeed({
           <span className="font-medium text-foreground">{partnerName}</span>
         </div>
         {phase !== "done" ? (
-          <Badge className="bg-blue-500/10 text-blue-500 text-[10px] animate-pulse border-0">
+          <Badge className="bg-blue-500/10 text-teal-500 text-[10px] animate-pulse border-0">
             Live
           </Badge>
         ) : score !== null ? (

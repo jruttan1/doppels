@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { verifyAuth } from '@/lib/auth/verify';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -7,11 +8,18 @@ const supabase = createClient(
 
 export async function POST(req: Request) {
   try {
-    const { simulationId, senderId } = await req.json();
+    const { simulationId } = await req.json();
 
-    if (!simulationId || !senderId) {
-      return Response.json({ error: "Missing simulationId or senderId" }, { status: 400 });
+    if (!simulationId) {
+      return Response.json({ error: "Missing simulationId" }, { status: 400 });
     }
+
+    // Get authenticated user - senderId comes from session, not request body
+    const auth = await verifyAuth();
+    if (auth.error) {
+      return Response.json({ error: auth.error }, { status: 401 });
+    }
+    const senderId = auth.userId;
 
     // Get simulation data - try by ID first
     let { data: simulation, error: simError } = await supabase

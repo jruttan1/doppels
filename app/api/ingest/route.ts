@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
+import { verifyAuthForUser } from '@/lib/auth/verify';
 
-// Init Clients
+// Init Clients - using service role for admin operations after auth verification
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!, 
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SERVICE_ROLE_KEY!
 );
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
@@ -53,7 +54,7 @@ const personaSchema = {
       type: SchemaType.OBJECT,
       properties: {
         name: { type: SchemaType.STRING },
-        tagline: { type: SchemaType.STRING },
+        tagline: { type: SchemaType.STRING, description: "Format: 'Role @ Company' (e.g. 'Engineer @ Stripe', 'Founder @ Acme'). Max 30 chars. No descriptions." },
         location: { type: SchemaType.STRING }
       },
       required: ["name", "tagline"]
@@ -126,6 +127,12 @@ export async function POST(req: Request) {
 
     if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
 
+    // Verify the authenticated user matches the requested user
+    const auth = await verifyAuthForUser(id);
+    if (auth.error) {
+      return NextResponse.json({ error: auth.error }, { status: 401 });
+    }
+
     console.log(`Starting ingestion for user: ${id}`);
 
     // 1. FETCH USER DATA
@@ -190,13 +197,14 @@ GitHub: ${githubData ? JSON.stringify(githubData, null, 2) : "Not provided"}
 Voice Analysis: ${voiceDna ? JSON.stringify(voiceDna, null, 2) : "Not provided"}
 
 CRITICAL REQUIREMENTS:
-1. **The "Style" Split:** You must distinguish between how the user *thinks* (Internal) and how they *talk* (External).
+1. **Tagline Format:** MUST be "Role @ Company" format. Examples: "Engineer @ Stripe", "PM @ Google", "Founder @ Acme". Max 30 characters. NO descriptions or expertise lists.
+2. **The "Style" Split:** You must distinguish between how the user *thinks* (Internal) and how they *talk* (External).
    - Use the provided Voice Analysis to populate the 'style' block.
    - Internal Monologue: Cynical, raw, analytical.
    - External Voice: Professional, polished, but authentic.
-2. **Analysis Block:** You MUST estimate seniority level and years of experience based on the resume.
-3. **Experience Log:** Merge Resume & LinkedIn. Format: "Role @ Company (Dates) - High-impact details."
-4. **Projects:** Merge Resume & GitHub. Format: "Name (Tech Stack) - Description."
+3. **Analysis Block:** You MUST estimate seniority level and years of experience based on the resume.
+4. **Experience Log:** Merge Resume & LinkedIn. Format: "Role @ Company (Dates) - High-impact details."
+5. **Projects:** Merge Resume & GitHub. Format: "Name (Tech Stack) - Description."
 `;
 
     console.log("Final synthesis with Gemini Pro...");

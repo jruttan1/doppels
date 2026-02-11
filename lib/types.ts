@@ -142,7 +142,10 @@ export interface SoulFileData {
   networking_goals: string[]
   // Raw assets
   raw_assets: {
-    voice_snippet: string
+    voice_snippet?: string
+    experience_log?: string[]
+    project_list?: string[]
+    interests?: string[]
   }
   // Filters (for gatekeeper)
   filters: {

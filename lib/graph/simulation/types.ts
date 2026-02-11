@@ -46,6 +46,8 @@ export interface TranscriptEntry {
 export interface AnalysisResult {
   score: number;
   takeaways: string[];
+  tone_score?: number;
+  tone_notes?: string;
 }
 
 /**

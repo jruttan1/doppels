@@ -12,17 +12,6 @@ import {
 } from './nodes';
 import { shouldContinueConversation } from './edges/router';
 
-/**
- * Create the simulation StateGraph.
- *
- * Graph topology:
- * START → agentReply → syncToDb → generateThought → delay → checkTermination → [routing]
- *                                                                               ↓
- *                                                                     continue → (loop back to agentReply)
- *                                                                     analyze → analyzeConversation → persistFinal → END
- *
- * Thought appears first, then delay gives user time to read it (premium feel).
- */
 export function createSimulationGraph() {
   const graph = new StateGraph(SimulationState)
     // Add all nodes

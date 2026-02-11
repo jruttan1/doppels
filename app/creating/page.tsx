@@ -30,46 +30,64 @@ export default function CreatingPage() {
   const [dots, setDots] = useState("")
   const [progress, setProgress] = useState(0)
   const [status, setStatus] = useState<string>("pending")
+  const [error, setError] = useState<string | null>(null)
   const onboardingStarted = useRef(false)
+  const onboardingDataRef = useRef<string | null>(null)
 
   // Start onboarding process
+  const startOnboarding = useCallback(async () => {
+    try {
+      setError(null)
+
+      // Get onboarding data from sessionStorage or use cached ref
+      let onboardingData = sessionStorage.getItem('onboarding_data')
+
+      if (onboardingData) {
+        // Cache it for retry
+        onboardingDataRef.current = onboardingData
+        // Clear from storage
+        sessionStorage.removeItem('onboarding_data')
+        sessionStorage.removeItem('onboarding_user_id')
+      } else if (onboardingDataRef.current) {
+        // Use cached data for retry
+        onboardingData = onboardingDataRef.current
+      }
+
+      if (onboardingData) {
+        console.log("Starting onboarding API call...")
+
+        const res = await fetch('/api/onboard', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: onboardingData,
+        })
+
+        const data = await res.json()
+
+        if (!res.ok || data.error) {
+          throw new Error(data.error || 'Failed to start onboarding')
+        }
+
+        console.log("Onboarding API response:", data)
+      }
+    } catch (err: any) {
+      console.error("Failed to start onboarding:", err)
+      setError(err.message || 'Something went wrong. Please try again.')
+    }
+  }, [])
+
   useEffect(() => {
     if (onboardingStarted.current) return
     onboardingStarted.current = true
-
-    const startOnboarding = async () => {
-      try {
-        // Get onboarding data from sessionStorage
-        const onboardingData = sessionStorage.getItem('onboarding_data')
-        
-        if (onboardingData) {
-          // Clear it so we don't re-trigger
-          sessionStorage.removeItem('onboarding_data')
-          sessionStorage.removeItem('onboarding_user_id')
-          
-          console.log("Starting onboarding API call...")
-          
-          // Call the onboarding API (this will trigger ingestion)
-          fetch('/api/onboard', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: onboardingData,
-          })
-            .then(res => res.json())
-            .then(data => {
-              console.log("Onboarding API response:", data)
-            })
-            .catch(err => {
-              console.error("Onboarding API error:", err)
-            })
-        }
-      } catch (error) {
-        console.error("Failed to start onboarding:", error)
-      }
-    }
-
     startOnboarding()
-  }, [])
+  }, [startOnboarding])
+
+  const handleRetry = () => {
+    setError(null)
+    setProgress(0)
+    setStatus("pending")
+    startOnboarding()
+  }
 
   // Poll for completion
   const checkStatus = useCallback(async () => {
@@ -194,7 +212,7 @@ export default function CreatingPage() {
         <h1 className="text-3xl sm:text-4xl md:text-5xl font-light text-white mb-4">
           {status === "complete" ? (
             <span className="teal-glow">Agent Ready</span>
-          ) : status === "failed" ? (
+          ) : status === "failed" || error ? (
             <span className="text-red-400">Something went wrong</span>
           ) : (
             <>
@@ -203,17 +221,31 @@ export default function CreatingPage() {
           )}
         </h1>
 
-        {/* Loading phrase */}
+        {/* Loading phrase or error message */}
         <div className="h-8 mb-8">
-          <p className="text-white/50 text-lg transition-opacity duration-500">
-            {status === "complete" 
-              ? "Your digital twin is ready to network" 
-              : status === "failed"
-              ? "We'll retry automatically"
-              : LOADING_PHRASES[currentPhrase]}
-            <span className="inline-block w-6 text-left">{status === "pending" ? dots : ""}</span>
-          </p>
+          {error ? (
+            <p className="text-red-400/70 text-lg">{error}</p>
+          ) : (
+            <p className="text-white/50 text-lg transition-opacity duration-500">
+              {status === "complete"
+                ? "Your digital twin is ready to network"
+                : status === "failed"
+                ? "We'll retry automatically"
+                : LOADING_PHRASES[currentPhrase]}
+              <span className="inline-block w-6 text-left">{status === "pending" && !error ? dots : ""}</span>
+            </p>
+          )}
         </div>
+
+        {/* Retry button when there's an error */}
+        {error && (
+          <button
+            onClick={handleRetry}
+            className="mb-8 px-6 py-2 rounded-full bg-[oklch(0.75_0.15_185)]/20 text-[oklch(0.85_0.12_185)] border border-[oklch(0.75_0.15_185)]/30 hover:bg-[oklch(0.75_0.15_185)]/30 transition-colors"
+          >
+            Try Again
+          </button>
+        )}
 
         {/* Progress bar */}
         <div className="w-80 sm:w-96 mb-8">

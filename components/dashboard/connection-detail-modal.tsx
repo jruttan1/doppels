@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Progress } from "@/components/ui/progress"
-import { Mail, Linkedin, ExternalLink, Sparkles, Target, Users, X } from "lucide-react"
+import { Mail, Linkedin, ExternalLink, Sparkles, Target, X } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
 interface ConnectionPreview {
@@ -228,21 +228,23 @@ export function ConnectionDetailModal({ connection, onClose }: ConnectionDetailM
             </div>
           </div>
 
-          {/* Talking Points */}
+          {/* Common Ground */}
           {talkingPoints.length > 0 && (
             <div className="space-y-3">
               <h4 className="text-sm font-medium flex items-center gap-2">
-                <Users className="w-4 h-4 text-primary" />
-                Talking Points
+                <Sparkles className="w-4 h-4 text-teal-500" />
+                Why you matched
               </h4>
-              <ul className="space-y-2">
-                {talkingPoints.map((point, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                    <span className="text-primary mt-1">•</span>
+              <div className="flex flex-wrap gap-2">
+                {talkingPoints.slice(0, 3).map((point, i) => (
+                  <span
+                    key={i}
+                    className="inline-flex items-center px-3 py-1.5 rounded-full text-sm bg-teal-500/10 text-teal-400 border border-teal-500/20"
+                  >
                     {point}
-                  </li>
+                  </span>
                 ))}
-              </ul>
+              </div>
             </div>
           )}
 

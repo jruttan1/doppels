@@ -30,6 +30,13 @@ export interface GenerateOptions {
 export interface AnalysisResult {
   score: number;
   takeaways: string[];
+  tone_score?: number;
+  tone_notes?: string;
+}
+
+export interface PersonaVoice {
+  name: string;
+  voice_snippet: string;
 }
 
 /**
@@ -91,14 +98,37 @@ export async function generateWithRetry(
 
 /**
  * Analyze a conversation transcript and return score + takeaways
+ * Optionally evaluates tone authenticity if personas are provided
  */
 export async function analyzeTranscript(
-  transcript: Array<{ speaker: string; text: string }>
+  transcript: Array<{ speaker: string; text: string }>,
+  personas?: { agentA?: PersonaVoice; agentB?: PersonaVoice }
 ): Promise<AnalysisResult> {
   const model = getModel();
 
   let retries = 0;
   const maxRetries = 3;
+
+  // Build tone evaluation section if personas provided
+  const toneSection = personas?.agentA?.voice_snippet || personas?.agentB?.voice_snippet
+    ? `
+TONE AUTHENTICITY EVALUATION:
+${personas.agentA ? `Person A (${personas.agentA.name}) should sound like: "${personas.agentA.voice_snippet}"` : ''}
+${personas.agentB ? `Person B (${personas.agentB.name}) should sound like: "${personas.agentB.voice_snippet}"` : ''}
+
+Also score tone_score (0-100) based on:
+- Did each person's messages match their voice profile? (word choice, energy, formality level, quirks)
+- Did the tones complement each other or clash awkwardly?
+- Did they sound like real humans with distinct personalities, or generic AI agents?
+- Penalize: overly technical deep-dives that no normal person would have, generic "professional networking" voice, messages that all sound the same
+
+Include "tone_notes" with a brief observation about the tone dynamics.
+`
+    : '';
+
+  const jsonFormat = personas?.agentA || personas?.agentB
+    ? '{ "score": number, "takeaways": ["string", "string", "string"], "tone_score": number, "tone_notes": "string" }'
+    : '{ "score": number, "takeaways": ["string", "string", "string"] }';
 
   while (retries < maxRetries) {
     try {
@@ -119,18 +149,26 @@ Score this conversation from 0-100 based on REAL VALUE, not politeness:
 - 0-19: Actively bad fit. They disagreed, talked past each other, or had nothing in common.
 
 Be honest. Most random networking conversations are 40-60. Only score 70+ if there's a specific, concrete reason they'd benefit from connecting.
+${toneSection}
+Return JSON: ${jsonFormat}
 
-Return JSON: { "score": number (0-100), "takeaways": ["string", "string", "string"] }
+TAKEAWAY FORMAT - These appear as small chips/tags in the UI. Make them punchy and specific:
+- Max 6 words each. Shorter is better.
+- No "both" or "they" - just state the connection point
+- Sound like a friend texting you why you'd vibe with someone
 
-TAKEAWAY FORMAT - Write them as short talking points for a follow-up email, NOT as analysis:
-- Bad: "Both professionals are deeply involved in AI development, indicating alignment of interests."
-- Good: "you're both building LLM tools for developers"
-- Bad: "They share a mutual interest in distributed systems architecture."
-- Good: "you mentioned the same frustration with Kubernetes complexity"
-- Bad: "There is potential for collaboration given their complementary skill sets."
-- Good: "they need frontend help, you've done React consulting"
+Bad (too long/generic):
+- "Both professionals are deeply involved in AI development"
+- "struggling with deterministic outputs, hallucination"
+- "both building LLM orchestration for pipelines"
 
-Keep each takeaway under 10 words. Write like a friend summarizing why you should meet someone.
+Good (punchy, specific):
+- "same RAG stack frustrations"
+- "they're hiring engineers"
+- "ex-Stripe, knows payments"
+- "building in your space"
+- "wants intros to VCs"
+- "uses your favorite tools"
 
 TRANSCRIPT:
 ${JSON.stringify(transcript)}`,

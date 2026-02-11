@@ -29,11 +29,28 @@ export async function analyzeConversationNode(
   }
 
   try {
+    // Extract voice snippets for tone evaluation
+    const personas = {
+      agentA: state.agentA?.persona?.raw_assets?.voice_snippet
+        ? {
+            name: state.agentA.name,
+            voice_snippet: state.agentA.persona.raw_assets.voice_snippet,
+          }
+        : undefined,
+      agentB: state.agentB?.persona?.raw_assets?.voice_snippet
+        ? {
+            name: state.agentB.name,
+            voice_snippet: state.agentB.persona.raw_assets.voice_snippet,
+          }
+        : undefined,
+    };
+
     const analysis = await analyzeTranscript(
       state.transcript.map((t) => ({
         speaker: t.speaker,
         text: t.text,
-      }))
+      })),
+      personas
     );
 
     return { analysis };
