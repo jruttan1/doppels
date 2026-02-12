@@ -105,7 +105,8 @@ export async function generateWithRetry(
 export async function analyzeTranscript(
   transcript: Array<{ speaker: string; text: string }>,
   personas?: { agentA?: PersonaVoice; agentB?: PersonaVoice },
-  currentUserName?: string
+  currentUserName?: string,
+  otherPersonName?: string
 ): Promise<AnalysisResult> {
   const model = getModel();
 
@@ -156,24 +157,24 @@ Include "tone_notes" with a brief observation about the tone dynamics.
             role: 'user',
             parts: [
               {
-                text: `${currentUserName ? `### STOP - READ THIS FIRST
-**${currentUserName}** is reading this report. Every takeaway must be about THE OTHER PERSON, not ${currentUserName}.
+                text: `${currentUserName && otherPersonName ? `### STOP - READ THIS FIRST
+**${currentUserName}** is reading this report.
+**${otherPersonName}** is who they talked to.
 
-WRONG (these describe ${currentUserName}, NOT the other person - NEVER DO THIS):
-- Anything about ${currentUserName}'s job title or role
-- Anything about ${currentUserName}'s skills or tech stack
-- Anything about ${currentUserName}'s company or projects
+EVERY TAKEAWAY MUST BE ABOUT ${otherPersonName.toUpperCase()}, NOT ${currentUserName.toUpperCase()}.
 
-RIGHT (these describe the OTHER person - DO THIS):
-- "hiring engineers at their startup"
-- "ex-Google, built search infra"
-- "looking for ML help"
-- "could intro to investors"
+WRONG (about ${currentUserName} - INSTANT FAIL):
+- Anything about ${currentUserName}'s job, role, company, skills, or projects
 
-If you mention ${currentUserName}'s job, company, or skills in a takeaway, you have FAILED.
+RIGHT (about ${otherPersonName} - what we want):
+- What ${otherPersonName} does for work
+- What ${otherPersonName} is looking for
+- Why ${currentUserName} should follow up with ${otherPersonName}
+
+If a takeaway describes ${currentUserName} instead of ${otherPersonName}, you have FAILED.
 
 ` : ''}### ROLE
-You are evaluating a networking transcript. Who should ${currentUserName || 'the viewer'} follow up with and WHY?
+You are evaluating a networking transcript. Why should ${currentUserName || 'the viewer'} follow up with ${otherPersonName || 'the other person'}?
 ${goalsSection}${toneSection}
 
 ### SCORING (Value Over Politeness)

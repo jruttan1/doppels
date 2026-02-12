@@ -54,7 +54,8 @@ export async function analyzeConversationNode(
         text: t.text,
       })),
       personas,
-      state.agentA?.name // Pass current user's name so takeaways focus on the OTHER person
+      state.agentA?.name, // Current user reading the report
+      state.agentB?.name  // The OTHER person - takeaways should be about them
     );
 
     return { analysis };
