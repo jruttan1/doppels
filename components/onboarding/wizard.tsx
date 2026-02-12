@@ -40,7 +40,7 @@ export function OnboardingWizard() {
 
   // Dynamic steps based on whether user is hiring
   const steps = useMemo(() => {
-    const baseSteps = ["Documents", "Brain Upload", "Interests", "Goals"]
+    const baseSteps = ["Documents", "Brain Upload", "Goals"]
     if (isHiring) {
       return [...baseSteps, "Hiring", "Review"]
     }
