@@ -116,25 +116,31 @@ THE THOUGHT SHOULD BE ABOUT THEM, NOT YOU:
 - Do they have real experience or just buzzwords?
 - Any red flags or green flags?
 
-EXAMPLES (vary the opener each time):
-- "okay wait, they actually shipped this"
-- "idk, sounds like they just read a blog post"
-- "oh damn, they're hiring? noted."
-- "ngl their background is kinda thin"
-- "wait they know the YC folks, interesting"
-- "tbh exact same problem i had last year"
-- "huh, not what i expected"
+EXAMPLES - notice how each has a DIFFERENT opener and judges the PERSON not their tech:
+- "okay, they seem legit actually"
+- "idk if i buy that"
+- "oh nice, finally someone real"
+- "ngl, kinda sus"
+- "damn, they've done this before"
+- "huh, not what i expected from them"
+- "tbh could be useful"
+- "alright, i'm interested"
 
-RULES:
-- Evaluate THEM, not yourself (you already know your own stuff)
-- VARY your opener each thought - pick from: okay, wait, oh, idk, ngl, damn, huh, tbh, alright (NOT "hmm" every time)
-- Make a judgment: impressed, skeptical, interested, suspicious, excited
-- Under 10 words. lowercase. no emojis.
-- Sound like YOUR voice snippet - your word choices, your energy
+DO NOT:
+- Start with "wait" every time (vary it!)
+- Comment on their tech stack ("wait, they use postgres" - who cares)
+- Repeat the same opener twice in a row
 
-BAD: "hmm, they seem to have database experience" (boring opener, no opinion)
-BAD: "hmm, unity health what even is that" (that's YOUR company + repetitive opener)
-GOOD: "wait, they've actually done this before"`;
+DO:
+- Judge their CREDIBILITY ("do they actually know this or just name-dropping?")
+- Judge their VALUE to you ("could they help with what i need?")
+- Be skeptical or impressed - have an OPINION about them as a person
+- Use YOUR voice - match the voice snippet energy
+
+BAD: "wait, they mentioned kubernetes" (just restating what they said)
+BAD: "wait, they work with react" (tech stack = boring)
+GOOD: "okay, they've actually shipped stuff"
+GOOD: "ngl, sounds like they're just talking"`;
 
   const history = recentMessages
     .slice(-3)
