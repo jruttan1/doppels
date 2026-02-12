@@ -3,7 +3,6 @@ import { createClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import { verifyAuthForUser } from '@/lib/auth/verify';
 import { runIngestion } from '@/lib/ingestion/ingest';
-import { runAutoConnect } from '@/lib/simulation/auto-connect';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -273,21 +272,6 @@ export async function POST(req: Request) {
     if (!ingestResult.success) {
       console.warn("Ingestion warning:", ingestResult.error);
       // Still return success because onboarding data IS saved
-    }
-
-    // 4. Trigger auto-connect to start first simulation (fire and forget)
-    if (ingestResult.success) {
-      runAutoConnect(userId).then(result => {
-        if (result.success && !result.done) {
-          console.log(`Auto-connect started simulation ${result.simulationId} with ${result.partnerName}`);
-        } else if (result.done) {
-          console.log("Auto-connect:", result.message);
-        } else {
-          console.warn("Auto-connect warning:", result.error);
-        }
-      }).catch(err => {
-        console.error("Auto-connect error (ignored):", err);
-      });
     }
 
     return NextResponse.json({
