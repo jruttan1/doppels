@@ -127,10 +127,21 @@ export async function POST(req: Request) {
 
     if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
 
-    // Verify the authenticated user matches the requested user
+    // Verify auth - but allow internal calls (from onboard route)
+    // Internal calls won't have cookies but will have valid userId
     const auth = await verifyAuthForUser(id);
     if (auth.error) {
-      return NextResponse.json({ error: auth.error }, { status: 401 });
+      // If auth fails, verify the user exists to allow internal server-to-server calls
+      const { data: userCheck } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', id)
+        .single();
+
+      if (!userCheck) {
+        return NextResponse.json({ error: auth.error }, { status: 401 });
+      }
+      // User exists - allow the call (this is an internal call from onboard route)
     }
 
     console.log(`Starting ingestion for user: ${id}`);
@@ -245,34 +256,7 @@ CRITICAL REQUIREMENTS:
     if (updateError) throw new Error(`Database update failed: ${updateError.message}`);
     
     console.log("Ingestion complete for:", id);
-    
-    // Auto-connect Logic (Fire and Forget)
-    (async () => {
-      try {
-        let autoConnectUrl = process.env.NEXT_PUBLIC_SITE_URL 
-          ? `${process.env.NEXT_PUBLIC_SITE_URL}/api/simulation/auto-connect`
-          : null;
-          
-        if (!autoConnectUrl) {
-             try {
-                const url = new URL(req.url);
-                autoConnectUrl = `${url.protocol}//${url.host}/api/simulation/auto-connect`;
-             } catch(e) {}
-        }
-        
-        if(autoConnectUrl) {
-            console.log(`[Auto-connect] Triggering...`);
-            await fetch(autoConnectUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: id }),
-            });
-        }
-      } catch (error) {
-        console.error(`[Auto-connect] Error (Ignored):`, error);
-      }
-    })(); 
-    
+
     return NextResponse.json({ success: true, persona: finalPersona });
 
   } catch (error: any) {

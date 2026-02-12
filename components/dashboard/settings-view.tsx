@@ -606,7 +606,7 @@ export function SettingsView() {
                   <Input
                     id="github"
                     type="url"
-                    placeholder="https://github.com/..."
+                    placeholder="GitHub Username"
                     value={githubUrl}
                     onChange={(e) => setGithubUrl(e.target.value)}
                     className="bg-secondary/50"

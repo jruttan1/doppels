@@ -37,6 +37,7 @@ export interface AnalysisResult {
 export interface PersonaVoice {
   name: string;
   voice_snippet: string;
+  networking_goals?: string[];
 }
 
 /**
@@ -109,6 +110,21 @@ export async function analyzeTranscript(
   let retries = 0;
   const maxRetries = 3;
 
+  // Build networking goals section - THIS IS THE MOST IMPORTANT FACTOR
+  const goalsSection = personas?.agentA?.networking_goals || personas?.agentB?.networking_goals
+    ? `
+CRITICAL - NETWORKING GOALS (Weight this heavily in scoring):
+${personas.agentA?.networking_goals?.length ? `${personas.agentA.name}'s goals: ${personas.agentA.networking_goals.join(', ')}` : ''}
+${personas.agentB?.networking_goals?.length ? `${personas.agentB.name}'s goals: ${personas.agentB.networking_goals.join(', ')}` : ''}
+
+The PRIMARY question is: Does this conversation help either person achieve their networking goals?
+- If Person A wants to "find a cofounder" and Person B could be that cofounder → high score
+- If Person A wants to "hire engineers" and Person B is an engineer looking for work → high score
+- If goals are completely misaligned (one wants to fundraise, other has nothing to offer) → low score
+- Pleasant conversation but no goal alignment → mediocre score at best (40-55)
+`
+    : '';
+
   // Build tone evaluation section if personas provided
   const toneSection = personas?.agentA?.voice_snippet || personas?.agentB?.voice_snippet
     ? `
@@ -152,23 +168,26 @@ Be honest. Most random networking conversations are 40-60. Only score 70+ if the
 ${toneSection}
 Return JSON: ${jsonFormat}
 
-TAKEAWAY FORMAT - These appear as small chips/tags in the UI. Make them punchy and specific:
-- Max 6 words each. Shorter is better.
-- No "both" or "they" - just state the connection point
-- Sound like a friend texting you why you'd vibe with someone
+TAKEAWAY FORMAT - These appear as small chips in the UI. Be extremely specific and casual:
+- 3-5 words max. Fragments are fine.
+- Write like you're texting a friend: "yo they're hiring" not "employment opportunities available"
+- NEVER use "both", "similar", "shared", "mutual" - these are lazy
+- Focus on ACTIONABLE reasons to connect, not vague vibes
 
-Bad (too long/generic):
-- "Both professionals are deeply involved in AI development"
-- "struggling with deterministic outputs, hallucination"
-- "both building LLM orchestration for pipelines"
+BANNED patterns (never write these):
+- "both tackling X" / "similar X struggles" / "shared interest in X"
+- anything with "deployment", "pipeline", "infrastructure" (too vague)
+- "prefer managed services" (who cares)
 
-Good (punchy, specific):
-- "same RAG stack frustrations"
+GOOD patterns (write like this):
 - "they're hiring engineers"
-- "ex-Stripe, knows payments"
-- "building in your space"
-- "wants intros to VCs"
-- "uses your favorite tools"
+- "knows your investor"
+- "built exactly this before"
+- "selling to your ICP"
+- "ex-Stripe, payments guy"
+- "needs help with RAG"
+- "could intro to YC"
+- "same tech stack"
 
 TRANSCRIPT:
 ${JSON.stringify(transcript)}`,
