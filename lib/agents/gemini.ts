@@ -10,7 +10,7 @@ function getModel(): GenerativeModel {
       throw new Error('GEMINI_API_KEY environment variable is not set');
     }
     genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+    model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
   }
   return model;
 }
@@ -56,6 +56,7 @@ export async function generateWithRetry(
       // Build contents array with system prompt, history, and user prompt
       const contents = [
         { role: 'user' as const, parts: [{ text: options.systemPrompt }] },
+        { role: 'model' as const, parts: [{ text: 'Understood.' }] },
         ...options.conversationHistory.slice(-6).map((msg, i) => ({
           role: (i % 2 === 0 ? 'user' : 'model') as 'user' | 'model',
           parts: [{ text: msg.text }],

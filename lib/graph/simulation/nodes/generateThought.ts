@@ -36,14 +36,33 @@ export async function generateThoughtNode(
       userPrompt: user,
       config: {
         temperature: 0.9,
-        maxOutputTokens: 45,
+        maxOutputTokens: 100,
         topP: 0.95,
         topK: 40,
       },
     });
 
+    // Clean up the thought - remove quotes, brackets, labels
+    let cleanText = text
+      .trim()
+      .replace(/^\[.*?\]:?\s*/i, '') // Remove [Opinion]: or [Thought]: prefixes
+      .replace(/^["']|["']$/g, '')   // Remove surrounding quotes
+      .replace(/^(thought|opinion|inner thought):?\s*/i, '') // Remove "Thought:" prefix
+      .replace(/^\*+|\*+$/g, '') // Remove asterisks
+      .trim();
+
+    // Log for debugging
+    console.log('generateThought raw:', text.slice(0, 100));
+    console.log('generateThought clean:', cleanText.slice(0, 100));
+
+    // Only skip if completely empty
+    if (!cleanText || cleanText.length < 3) {
+      console.log('generateThought skipped - too short');
+      return {};
+    }
+
     const thought: ThoughtEntry = {
-      text: text.trim().replace(/^["']|["']$/g, ''),
+      text: cleanText,
       turnNumber: turn,
       timestamp: new Date().toISOString(),
     };

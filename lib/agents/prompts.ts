@@ -139,7 +139,7 @@ GOOD: "okay, they actually know their stuff"`;
     .map((m) => `${m.speaker}: ${m.text}`)
     .join('\n');
 
-  const user = `What ${otherPersonName || 'they'} just said:\n${history}\n\nYour private thought about THEM (in your voice):`;
+  const user = `What ${otherPersonName || 'they'} just said:\n${history}\n\nYour private thought (just the thought, nothing else):`;
 
   return { system, user };
 }
