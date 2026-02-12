@@ -121,8 +121,8 @@ export async function runAutoConnect(userId: string): Promise<AutoConnectResult>
       maxTurns: 10,
     };
 
-    // Run graph asynchronously (fire and forget)
-    runGraphInBackground(sim.id, initialState);
+    // Run graph synchronously - must complete before response on Vercel
+    await runGraphInBackground(sim.id, initialState);
 
     return {
       success: true,

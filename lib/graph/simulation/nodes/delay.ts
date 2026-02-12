@@ -1,8 +1,9 @@
 import type { SimulationStateType } from '../state';
 
-// Delay range in milliseconds for a premium "thinking" feel
-const MIN_DELAY_MS = 2500;
-const MAX_DELAY_MS = 4500;
+// Delay range in milliseconds - keep short for serverless (60s timeout)
+// The UI handles display timing separately
+const MIN_DELAY_MS = 500;
+const MAX_DELAY_MS = 1000;
 
 /**
  * Node: Introduce a natural delay between conversation turns.
