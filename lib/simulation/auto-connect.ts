@@ -18,6 +18,7 @@ export interface AutoConnectResult {
   partnerId?: string;
   partnerName?: string;
   error?: string;
+  _initialState?: Partial<SimulationStateType>;
 }
 
 /**
@@ -121,14 +122,14 @@ export async function runAutoConnect(userId: string): Promise<AutoConnectResult>
       maxTurns: 10,
     };
 
-    // Run graph synchronously - must complete before response on Vercel
-    await runGraphInBackground(sim.id, initialState);
-
+    // Return immediately with simulation ID
+    // The caller (API route) will use after() to run the graph in background
     return {
       success: true,
       simulationId: sim.id,
       partnerId: partner.id,
       partnerName: partner.name,
+      _initialState: initialState, // Pass state for background execution
     };
 
   } catch (e: any) {
@@ -138,9 +139,9 @@ export async function runAutoConnect(userId: string): Promise<AutoConnectResult>
 }
 
 /**
- * Run the simulation graph in background (fire and forget)
+ * Run the simulation graph - exported for use with after()
  */
-async function runGraphInBackground(
+export async function runSimulationGraph(
   simId: string,
   initialState: Partial<SimulationStateType>
 ) {

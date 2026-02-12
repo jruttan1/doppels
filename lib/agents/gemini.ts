@@ -154,40 +154,31 @@ Include "tone_notes" with a brief observation about the tone dynamics.
             role: 'user',
             parts: [
               {
-                text: `You are evaluating a networking conversation to determine if these two people should actually connect.
+                text: `### ROLE
+You are a cynical, high-stakes Executive Talent Scout. You are evaluating a networking transcript to determine if a follow-up is a high-value use of time or a polite waste of breath.
 
-Score this conversation from 0-100 based on REAL VALUE, not politeness:
+### SCORING (Value Over Politeness)
+- 80-100: **High ROI.** Specific "give/get" identified (e.g., money, hires, specific intros).
+- 60-79: **Warm Lead.** High overlap in niche, but no immediate "ask" or "offer."
+- 40-59: **Coffee Chat Tier.** Friendly, but no business reason to meet again.
+- 0-39: **Dead End.** No overlap, total mismatch, or generic small talk.
 
-- 80-100: Clear reason to stay in touch. Specific collaboration opportunity, shared problem they could solve together, or genuine mutual benefit.
-- 60-79: Interesting overlap. They could learn from each other or might collaborate someday, but nothing concrete yet.
-- 40-59: Pleasant but generic. They were friendly but didn't find anything specific to work on together.
-- 20-39: Forced conversation. Polite but clearly no real overlap in what they care about.
-- 0-19: Actively bad fit. They disagreed, talked past each other, or had nothing in common.
+### TAKEAWAY CONSTRAINTS (The "Density" Rules)
+Provide 3-5 takeaways. Each must be a **single, punchy line** (approx. 5-10 words). 
 
-Be honest. Most random networking conversations are 40-60. Only score 70+ if there's a specific, concrete reason they'd benefit from connecting.
-${goalsSection}${toneSection}
-Return JSON: ${jsonFormat}
+**The Subject Line Test:** Every takeaway must be specific enough to function as a high-context email subject line or a text message to a business partner.
 
-TAKEAWAY FORMAT - These appear as small chips in the UI. Be extremely specific and casual:
-- 3-5 words max. Fragments are fine.
-- Write like you're texting a friend: "yo they're hiring" not "employment opportunities available"
-- NEVER use "both", "similar", "shared", "mutual" - these are lazy
-- Focus on ACTIONABLE reasons to connect, not vague vibes
+**STRICT PROHIBITIONS:**
+1. **NO Vague Nouns:** "infrastructure", "stack", "processes", "growth", "strategy", "solutions."
+2. **NO Empty Adjectives:** "heavy", "complex", "interesting", "passionate", "senior."
+3. **NO "Shared" or "Both":** Do not highlight similarities; highlight unique assets or needs.
 
-BANNED patterns (never write these):
-- "both tackling X" / "similar X struggles" / "shared interest in X"
-- anything with "deployment", "pipeline", "infrastructure" (too vague)
-- "prefer managed services" (who cares)
-
-GOOD patterns (write like this):
-- "they're hiring engineers"
-- "knows your investor"
-- "built exactly this before"
-- "selling to your ICP"
-- "ex-Stripe, payments guy"
-- "needs help with RAG"
-- "could intro to YC"
-- "same tech stack"
+**REQUIRED LOGIC (Asset/Need Model):**
+Every takeaway must anchor to a **Hard Asset** (what they have) or a **Hard Need** (what they want).
+- *Bad:* "Has experience with scaling startups." (Too vague)
+- *Good:* "Scaled Stripe's EMEA sales team from 0 to 50."
+- *Bad:* "Needs help with their cloud setup." (Too vague)
+- *Good:* "Seeking architect to migrate legacy AWS to serverless."
 
 TRANSCRIPT:
 ${JSON.stringify(transcript)}`,

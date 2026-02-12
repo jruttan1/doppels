@@ -1,12 +1,13 @@
+import { after } from 'next/server';
 import { verifyAuthForUser } from '@/lib/auth/verify';
-import { runAutoConnect } from '@/lib/simulation/auto-connect';
+import { runAutoConnect, runSimulationGraph } from '@/lib/simulation/auto-connect';
 
 export const maxDuration = 60;
 
 /**
  * POST /api/simulation/auto-connect
  * Finds a partner and starts a simulation.
- * Requires authentication - the caller must be the user requesting auto-connect.
+ * Returns immediately with simulationId, runs graph in background via after().
  */
 export async function POST(req: Request) {
   try {
@@ -22,7 +23,7 @@ export async function POST(req: Request) {
       return Response.json({ error: auth.error }, { status: 401 });
     }
 
-    // Run auto-connect using shared function
+    // Run auto-connect - creates simulation row and returns immediately
     const result = await runAutoConnect(userId);
 
     if (!result.success) {
@@ -31,6 +32,13 @@ export async function POST(req: Request) {
 
     if (result.done) {
       return Response.json({ done: true, message: result.message });
+    }
+
+    // Run graph in background using after() - executes after response is sent
+    if (result._initialState && result.simulationId) {
+      after(async () => {
+        await runSimulationGraph(result.simulationId!, result._initialState!);
+      });
     }
 
     return Response.json({
