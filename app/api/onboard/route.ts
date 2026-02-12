@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import { verifyAuthForUser } from '@/lib/auth/verify';
+import { runIngestion } from '@/lib/ingestion/ingest';
+import { runAutoConnect } from '@/lib/simulation/auto-connect';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -265,32 +267,33 @@ export async function POST(req: Request) {
 
     console.log("Onboarding data saved successfully.");
 
-    // 3. Trigger Vector Ingestion (Embedding)
-    let ingestUrl: string;
-    try {
-      const url = new URL(req.url);
-      ingestUrl = `${url.protocol}//${url.host}/api/ingest`;
-    } catch (urlError) {
-      const fallbackBase = process.env.NEXT_PUBLIC_SITE_URL || `https://${process.env.VERCEL_URL}`;
-      ingestUrl = `${fallbackBase}/api/ingest`;
+    // 3. Run ingestion directly (no HTTP call needed - already authenticated)
+    const ingestResult = await runIngestion(userId);
+
+    if (!ingestResult.success) {
+      console.warn("Ingestion warning:", ingestResult.error);
+      // Still return success because onboarding data IS saved
     }
 
-    // We await this to ensure the process starts, but we don't block heavily
-    const ingestRes = await fetch(ingestUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: userId }),
-    });
-
-    if (!ingestRes.ok) {
-       console.warn("Ingestion trigger warning:", await ingestRes.text());
-       // We still return success because the user data IS saved, 
-       // but we might want to log this for the admin.
+    // 4. Trigger auto-connect to start first simulation (fire and forget)
+    if (ingestResult.success) {
+      runAutoConnect(userId).then(result => {
+        if (result.success && !result.done) {
+          console.log(`Auto-connect started simulation ${result.simulationId} with ${result.partnerName}`);
+        } else if (result.done) {
+          console.log("Auto-connect:", result.message);
+        } else {
+          console.warn("Auto-connect warning:", result.error);
+        }
+      }).catch(err => {
+        console.error("Auto-connect error (ignored):", err);
+      });
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      profile: unifiedProfile 
+    return NextResponse.json({
+      success: true,
+      profile: unifiedProfile,
+      persona: ingestResult.persona
     });
 
   } catch (error: any) {
