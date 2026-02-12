@@ -183,29 +183,27 @@ ${goalsSection}${toneSection}
 - 40-59: **Coffee Chat Tier.** Friendly, but no business reason to meet again.
 - 0-39: **Dead End.** No overlap, total mismatch, or generic small talk.
 
-### TAKEAWAYS = REASONS TO FOLLOW UP (not tech skills)
-3 short phrases (4-7 words each). These answer: "Why should I email this person?"
+### TAKEAWAYS = WHO IS THIS PERSON + WHY CARE
+3 phrases (8-12 words each) about ${otherPersonName || 'the other person'}. Answer: "Who is this and why should I email them?"
 
-**INSTANT FAIL - DO NOT WRITE:**
-- "postgres and REST API experience" ← NO, this is a skill listing
-- "familiar with on-prem solutions" ← NO, this is generic
-- "has X experience" ← NO
-- "works with Y technology" ← NO
-- "prefers Z approach" ← NO
+**YOU ARE FAILING IF YOU WRITE:**
+- Conversation topics ("discussing ML ops", "exploring kubernetes") ← NO
+- Tech skills ("works with postgres", "full-stack development") ← NO
+- Generic descriptions ("deployment challenges", "CI/CD pipelines") ← NO
 
-**CORRECT FORMAT - COPY EXACTLY:**
-- "hiring engineers, $150k+"
-- "ex-Stripe, built payments"
-- "looking for cofounder"
-- "knows YC partners"
-- "could intro to investors"
-- "needs exactly what you built"
+**CORRECT - ABOUT THE PERSON:**
+- "hiring senior engineers, mentioned $150k+ budget"
+- "ex-Stripe engineer, built their payments infrastructure"
+- "actively looking for a technical cofounder"
+- "well-connected, can intro to YC partners"
+- "needs ML help for their startup, has budget"
+- "runs a 50-person fintech, scaling fast"
 
-**THE TEST:** Would you text this to a friend as a reason to intro them?
-- "they have postgres experience" ← NO, nobody texts this
-- "they're hiring your role" ← YES, this is actionable
+**THE QUESTION:** If I asked "who's ${otherPersonName || 'this person'}?", would your answer make sense?
+- "deployment challenges" ← NO, that's a topic not a person
+- "CTO at fintech startup, hiring" ← YES, that's who they are
 
-If the conversation was just small talk with no opportunities, return: ["no clear opportunity"]
+If no clear opportunity emerged, return: ["no clear opportunity"]
 
 Return JSON: ${jsonFormat}
 
