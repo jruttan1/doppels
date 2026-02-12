@@ -156,17 +156,25 @@ Include "tone_notes" with a brief observation about the tone dynamics.
             role: 'user',
             parts: [
               {
-                text: `### ROLE
-You are a cynical, high-stakes Executive Talent Scout. You are evaluating a networking transcript to determine if a follow-up is a high-value use of time or a polite waste of breath.
-${goalsSection}${toneSection}
-${currentUserName ? `### CRITICAL: WHO IS THE VIEWER
-The person viewing these results is: **${currentUserName}**
-All takeaways MUST be about the OTHER person in the conversation, NOT ${currentUserName}.
-${currentUserName} already knows about themselves. They want to know why the OTHER person is worth connecting with.
+                text: `${currentUserName ? `### STOP - READ THIS FIRST
+**${currentUserName}** is reading this report. Every takeaway must be about THE OTHER PERSON, not ${currentUserName}.
 
-WRONG: "${currentUserName} has LLM experience" (they already know this!)
-RIGHT: "They're hiring ML engineers" (useful info about the other person)
-` : ''}
+WRONG (these describe ${currentUserName}, NOT the other person - NEVER DO THIS):
+- Anything about ${currentUserName}'s job title or role
+- Anything about ${currentUserName}'s skills or tech stack
+- Anything about ${currentUserName}'s company or projects
+
+RIGHT (these describe the OTHER person - DO THIS):
+- "hiring engineers at their startup"
+- "ex-Google, built search infra"
+- "looking for ML help"
+- "could intro to investors"
+
+If you mention ${currentUserName}'s job, company, or skills in a takeaway, you have FAILED.
+
+` : ''}### ROLE
+You are evaluating a networking transcript. Who should ${currentUserName || 'the viewer'} follow up with and WHY?
+${goalsSection}${toneSection}
 
 ### SCORING (Value Over Politeness)
 - 80-100: **High ROI.** Specific "give/get" identified (e.g., money, hires, specific intros).
@@ -174,31 +182,29 @@ RIGHT: "They're hiring ML engineers" (useful info about the other person)
 - 40-59: **Coffee Chat Tier.** Friendly, but no business reason to meet again.
 - 0-39: **Dead End.** No overlap, total mismatch, or generic small talk.
 
-### TAKEAWAY FORMAT
-Each takeaway is a SHORT string (5-10 words max) displayed as a UI chip. NO explanations. NO "so what" reasoning. Just the fact.
+### TAKEAWAYS = REASONS TO FOLLOW UP (not tech skills)
+3 short phrases (4-7 words each). These answer: "Why should I email this person?"
 
-**BANNED (instant fail):**
-- "Has full-stack experience with React/Node" (generic tech)
-- "Works on scalability challenges" (vague)
-- "Prefers monolithic architecture" (who cares)
-- "Has experience with X" (too vague)
-- Any takeaway longer than 10 words
-- Any takeaway with "So what?" explanation included
+**INSTANT FAIL - DO NOT WRITE:**
+- "postgres and REST API experience" ← NO, this is a skill listing
+- "familiar with on-prem solutions" ← NO, this is generic
+- "has X experience" ← NO
+- "works with Y technology" ← NO
+- "prefers Z approach" ← NO
 
-**GOOD (copy this exact style):**
-- "hiring backend devs, $180k budget"
-- "ex-Stripe, built their billing system"
-- "looking for cofounder, has $50k saved"
-- "knows Sequoia partners personally"
-- "built same auth system you need"
-- "their startup is hiring your role"
+**CORRECT FORMAT - COPY EXACTLY:**
+- "hiring engineers, $150k+"
+- "ex-Stripe, built payments"
+- "looking for cofounder"
+- "knows YC partners"
+- "could intro to investors"
+- "needs exactly what you built"
 
-**CRITICAL RULES:**
-1. MAX 10 words per takeaway. Short fragments only.
-2. Must reference something SPECIFIC from the conversation
-3. Must imply why ${currentUserName || 'the viewer'} should care
-4. NO generic tech/experience statements
-5. If nothing actionable was said, return: ["No clear opportunity identified"]
+**THE TEST:** Would you text this to a friend as a reason to intro them?
+- "they have postgres experience" ← NO, nobody texts this
+- "they're hiring your role" ← YES, this is actionable
+
+If the conversation was just small talk with no opportunities, return: ["no clear opportunity"]
 
 Return JSON: ${jsonFormat}
 

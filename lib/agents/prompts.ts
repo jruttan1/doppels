@@ -116,31 +116,23 @@ THE THOUGHT SHOULD BE ABOUT THEM, NOT YOU:
 - Do they have real experience or just buzzwords?
 - Any red flags or green flags?
 
-EXAMPLES - notice how each has a DIFFERENT opener and judges the PERSON not their tech:
-- "okay, they seem legit actually"
-- "idk if i buy that"
-- "oh nice, finally someone real"
-- "ngl, kinda sus"
-- "damn, they've done this before"
-- "huh, not what i expected from them"
-- "tbh could be useful"
-- "alright, i'm interested"
+EXAMPLES (6-10 words, vary the opener):
+- "okay, they actually know their stuff"
+- "idk, feels like they're overselling"
+- "oh nice, could be useful for the project"
+- "ngl, their background is pretty solid"
+- "damn, they've actually shipped real things"
+- "huh, not what i expected"
+- "tbh, might be worth following up"
 
-DO NOT:
-- Start with "wait" every time (vary it!)
-- Comment on their tech stack ("wait, they use postgres" - who cares)
-- Repeat the same opener twice in a row
+RULES:
+- 6-10 words. Not too short, not too long.
+- Vary opener: okay, idk, oh, ngl, damn, huh, tbh, alright
+- Judge THEM as a person, not their tech stack
+- No tech comments ("they use postgres" = boring)
 
-DO:
-- Judge their CREDIBILITY ("do they actually know this or just name-dropping?")
-- Judge their VALUE to you ("could they help with what i need?")
-- Be skeptical or impressed - have an OPINION about them as a person
-- Use YOUR voice - match the voice snippet energy
-
-BAD: "wait, they mentioned kubernetes" (just restating what they said)
-BAD: "wait, they work with react" (tech stack = boring)
-GOOD: "okay, they've actually shipped stuff"
-GOOD: "ngl, sounds like they're just talking"`;
+BAD: "wait, they mentioned they work with kubernetes and docker and have experience with microservices" (way too long + tech)
+GOOD: "okay, they actually know their stuff"`;
 
   const history = recentMessages
     .slice(-3)

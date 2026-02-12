@@ -36,7 +36,7 @@ export async function generateThoughtNode(
       userPrompt: user,
       config: {
         temperature: 0.9,
-        maxOutputTokens: 60,
+        maxOutputTokens: 45,
         topP: 0.95,
         topK: 40,
       },
