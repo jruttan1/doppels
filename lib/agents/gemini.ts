@@ -165,7 +165,7 @@ Score this conversation from 0-100 based on REAL VALUE, not politeness:
 - 0-19: Actively bad fit. They disagreed, talked past each other, or had nothing in common.
 
 Be honest. Most random networking conversations are 40-60. Only score 70+ if there's a specific, concrete reason they'd benefit from connecting.
-${toneSection}
+${goalsSection}${toneSection}
 Return JSON: ${jsonFormat}
 
 TAKEAWAY FORMAT - These appear as small chips in the UI. Be extremely specific and casual:

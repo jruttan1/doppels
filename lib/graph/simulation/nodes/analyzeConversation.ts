@@ -29,18 +29,20 @@ export async function analyzeConversationNode(
   }
 
   try {
-    // Extract voice snippets for tone evaluation
+    // Extract voice snippets and networking goals for evaluation
     const personas = {
-      agentA: state.agentA?.persona?.raw_assets?.voice_snippet
+      agentA: state.agentA?.persona
         ? {
             name: state.agentA.name,
-            voice_snippet: state.agentA.persona.raw_assets.voice_snippet,
+            voice_snippet: state.agentA.persona.raw_assets?.voice_snippet || '',
+            networking_goals: state.agentA.persona.networking_goals || [],
           }
         : undefined,
-      agentB: state.agentB?.persona?.raw_assets?.voice_snippet
+      agentB: state.agentB?.persona
         ? {
             name: state.agentB.name,
-            voice_snippet: state.agentB.persona.raw_assets.voice_snippet,
+            voice_snippet: state.agentB.persona.raw_assets?.voice_snippet || '',
+            networking_goals: state.agentB.persona.networking_goals || [],
           }
         : undefined,
     };
