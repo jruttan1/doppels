@@ -1,3 +1,4 @@
+/*
 "use client"
 
 import { useState, useMemo, useRef, useEffect } from "react"
@@ -138,7 +139,6 @@ export function StepInterests({ soulData, updateSoulData, onNext, onPrev }: Step
       </div>
 
       <div className="space-y-8">
-        {/* Hero Input */}
         <div className="relative">
           <input
             ref={inputRef}
@@ -182,7 +182,6 @@ export function StepInterests({ soulData, updateSoulData, onNext, onPrev }: Step
             <Plus className="w-5 h-5" />
           </button>
 
-          {/* Typeahead dropdown */}
           {showDropdown && typeaheadSuggestions.length > 0 && (
             <div
               ref={dropdownRef}
@@ -205,7 +204,6 @@ export function StepInterests({ soulData, updateSoulData, onNext, onPrev }: Step
           )}
         </div>
 
-        {/* Selected interests */}
         {interests.length > 0 && (
           <div className="space-y-3">
             <span className="text-xs text-white/30">Your interests</span>
@@ -228,7 +226,6 @@ export function StepInterests({ soulData, updateSoulData, onNext, onPrev }: Step
           </div>
         )}
 
-        {/* Contextual suggestions */}
         <div className="space-y-3">
           <span className="text-xs text-white/30">Popular interests</span>
           <div className="flex flex-wrap gap-2">
@@ -265,3 +262,5 @@ export function StepInterests({ soulData, updateSoulData, onNext, onPrev }: Step
     </div>
   )
 }
+*/
+

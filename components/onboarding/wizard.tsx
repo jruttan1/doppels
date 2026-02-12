@@ -4,7 +4,6 @@ import { useState, useMemo } from "react"
 import { OnboardingHeader } from "./header"
 import { StepDocuments } from "./step-documents"
 import { StepVibeCheck } from "./step-vibe-check"
-import { StepInterests } from "./step-interests"
 import { StepObjectives } from "./step-objectives"
 import { StepHiring } from "./step-hiring"
 import { StepReview } from "./step-review"
@@ -73,8 +72,6 @@ export function OnboardingWizard() {
         return <StepDocuments soulData={soulData} updateSoulData={updateSoulData} onNext={nextStep} />
       case "Brain Upload":
         return <StepVibeCheck soulData={soulData} updateSoulData={updateSoulData} onNext={nextStep} onPrev={prevStep} />
-      case "Interests":
-        return <StepInterests soulData={soulData} updateSoulData={updateSoulData} onNext={nextStep} onPrev={prevStep} />
       case "Goals":
         return <StepObjectives soulData={soulData} updateSoulData={updateSoulData} onNext={nextStep} onPrev={prevStep} />
       case "Hiring":
