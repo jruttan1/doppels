@@ -24,10 +24,36 @@ export function StepReview({ soulData, onPrev }: StepReviewProps) {
     try {
       const supabase = createClient()
       
-      // Get current user
+      // Get current user - first check session, then validate with server
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+
+      if (sessionError) {
+        console.error("Session error:", sessionError)
+        throw new Error(`Session error: ${sessionError.message}`)
+      }
+
+      if (!session) {
+        // No session - redirect to login
+        router.push("/auth/login")
+        return
+      }
+
+      // Validate with server (this also refreshes the session if needed)
       const { data: { user }, error: userError } = await supabase.auth.getUser()
-      if (userError || !user) {
-        throw new Error("You must be logged in to continue")
+
+      if (userError) {
+        console.error("Auth validation error:", userError)
+        // If refresh token is invalid, redirect to login
+        if (userError.message.includes('Refresh Token') || userError.message.includes('Invalid')) {
+          router.push("/auth/login")
+          return
+        }
+        throw new Error(`Auth error: ${userError.message}`)
+      }
+
+      if (!user) {
+        router.push("/auth/login")
+        return
       }
       
       // Store user ID in sessionStorage for the creating page
