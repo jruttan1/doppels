@@ -41,10 +41,58 @@ Nothing is sent automatically. No one is matched without mutual consent.
 |------|------------|
 | Frontend | Next.js, TypeScript, Tailwind CSS |
 | Backend | TypeScript routes, Google Gemini API, Supabase Realtime |
-| Database | Supabase (PostgreSQL + Auth) |
+| Database | Supabase (PostgreSQL + demo auth mode) |
 | UI Components | shadcn/ui |
 
 ---
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+
+- pnpm (recommended) or npm
+- Supabase account
+
+### Environment Variables
+
+```env
+# Demo auth for local review and screenshots
+NEXT_PUBLIC_DEMO_AUTH=true
+
+# Supabase public client config used by the app and API routes
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# Optional auth redirect override for signup emails
+NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL=http://localhost:3000/auth/callback
+
+# Optional site URL used by API fallbacks
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+
+# Required for API routes that write data or send simulations
+SERVICE_ROLE_KEY=your_supabase_service_role_key
+
+# AI and orchestration keys used by onboarding and ingest flows
+GEMINI_API_KEY=your_gemini_api_key
+GUMLOOP_API_KEY=your_gumloop_api_key
+GUMLOOP_KEY_2=your_optional_second_gumloop_key
+GUMLOOP_PIPELINE_ID=your_gumloop_pipeline_id
+GUMLOOP_USER_ID=your_gumloop_user_id
+GUMLOOP_X_API_KEY=your_gumloop_x_api_key
+GUMLOOP_X_PIPELINE_ID=your_gumloop_x_pipeline_id
+GUMLOOP_X_USER_ID=your_gumloop_x_user_id
+
+# Optional integrations used by parts of the ingest flow
+GITHUB_TOKEN=your_github_token
+```
+
+### Build Commands
+
+- `pnpm dev` starts the development server.
+- `pnpm build` creates a production build.
+- `pnpm start` runs the production server after building.
+- `pnpm lint` runs ESLint across the repo.
 
 ## Features
 

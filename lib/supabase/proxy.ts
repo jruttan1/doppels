@@ -1,7 +1,12 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
+import { isDemoAuthEnabled } from "./demo-mode"
 
 export async function updateSession(request: NextRequest) {
+  if (isDemoAuthEnabled()) {
+    return NextResponse.next({ request })
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   })
